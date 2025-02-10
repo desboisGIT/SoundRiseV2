@@ -8,13 +8,14 @@ class CustomUserAdmin(UserAdmin):
 
     model = CustomUser
 
-    list_display = ("email", "username", "is_staff", "is_active", "date_joined")
+    list_display = ("email", "username","profile_picture", "is_staff", "is_active", "date_joined")
     list_filter = ("is_staff", "is_active")
     ordering = ("date_joined",)
     search_fields = ("email", "username")
 
     fieldsets = (
-        (_("Informations personnelles"), {"fields": ("email", "username", "password")}),
+        (_("Informations personnelles"), {"fields": ("email", "username", "password","profile_picture","bio" )}),
+                                                    
         (_("Permissions"), {"fields": ("is_staff", "is_active", "is_superuser", "groups", "user_permissions")}),
     )
 
