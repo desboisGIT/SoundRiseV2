@@ -33,7 +33,7 @@ function App() {
                 src={MainLogo}
                 alt="SoundRise Logo"
                 className="SoundRiseLogoMain"
-                onClick={() => console.log("Main Logo Clicked")}
+                onClick={() => (window.location.href = "/")}
               />
               <TopBarButtonDropDown
                 title="Explore"

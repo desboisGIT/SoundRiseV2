@@ -31,11 +31,15 @@ SITE_ID = 1
 SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = os.getenv("DEBUG") == "True"
 
+<<<<<<< HEAD
 ALLOWED_HOSTS = []
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Allow requests from Vite frontend
 ]
 CORS_ALLOW_ALL_ORIGINS = True
+=======
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+>>>>>>> 78bf76c8286ca4156fcbc7d51361dd59a0b835a0
 
 CORS_ALLOW_METHODS = [
     "GET",
