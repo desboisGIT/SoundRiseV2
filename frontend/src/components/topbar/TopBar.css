@@ -8,6 +8,7 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     color: #eee;
     border-bottom: 1px solid rgb(38, 38, 38);
+
 }
 
 .TopBar div {
@@ -39,18 +40,75 @@
 }
 
 .TopBarButtonDropDown {
+    cursor: pointer;
     position: relative;
     display: inline-block;
+    font-size: 1em;
+    border-radius: 50px;
+    padding: 3px 12px;
+
+    border: 1px solid rgba(38, 38, 38, 0);
+    -moz-transition: all 0.2s ease-in;
+    -webkit-transition: all 0.2s ease-in;
+    -o-transition: all 0.2s ease-in;
+    transition: all 0.2s ease-in;
+}
+
+.DropDownButton {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+}
+.chevron-icon {
+    font-size: 0.8em;
+    transition: all 0.2s ease-in;
+    color: #9F9F9F;
+}
+.rotate-180 {
+    transform: rotate(-180deg);
+    color: #fff !important;   
+}
+
+.rotate-90 {
+    transform: rotate(-90deg);
+    color: #fff !important;   
+}
+
+.rotate-0 {
+    transform: rotate(0deg);
+}
+
+.TopBarButtonDropDown p {
+    transition: all 0.2s ease-in;
+    margin: 0;
+    font-size: 1em;
+    font-weight: 400;
+    font-family: 'Poppins', Arial, Helvetica, sans-serif;
+    color: #9F9F9F;
+    cursor: pointer;
+}
+
+.white {
+    color: #fff !important;    
+}
+
+.gray {
+    color: #9F9F9F;
+}
+
+.TopBarButtonDropDown:hover {
+    background-color: #1d1d1ddc;
+    border: 1px solid rgb(59, 59, 59);
+    color: #fff !important;
 }
 
 .TopBarButton {
     font-family: 'Poppins', Arial, Helvetica, sans-serif;
     cursor: pointer;
     transition: all 0.2s ease-in-out;
-}
-
-.TopBarButton:hover {
-    transform: scale(1.02);
+    color: #fff;
+    font-weight: 400;
 }
 
 .TopBarDropdownMenuOption {
@@ -64,6 +122,10 @@
 
 .TopBarDropdownMenuOption.active {
     pointer-events: all;
+}
+
+.TopBarDropdownMenuOption.notActive {
+    pointer-events: none;
 }
 
 

@@ -36,7 +36,7 @@ function App() {
                 onClick={() => (window.location.href = "/")}
               />
               <TopBarButtonDropDown
-                title="Explore"
+                title="Feed"
                 optionList={ExploreOptions}
                 position={"center"}
               />

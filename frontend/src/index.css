@@ -56,3 +56,7 @@ body, html, #root {
   color: #a0a0a0; /* Placeholder color for better contrast */
   opacity: 0.8; /* Slightly transparent for a softer look */
 }
+
+.flex {
+  display: flex;
+}
