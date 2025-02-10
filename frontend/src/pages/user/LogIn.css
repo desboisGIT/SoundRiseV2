@@ -1,0 +1,10 @@
+.login-page-background{
+    width: 100%;
+    height: 100%;
+    background-size: 100% 100%;
+    background-position: 0px 0px, 0px 0px, 0px 0px;
+    background-image: radial-gradient(75% 75% at -23% 139%, #121212 0%, #073EFF17 69%), radial-gradient(75% 75% at 94% 43%, #073EFF17 2%, #121212 99%), radial-gradient(75% 75% at 50% 50%, #121212 0%, #150A19FF 100%);
+    display: flex;
+    justify-content: center;
+    padding-top: 10%;
+}

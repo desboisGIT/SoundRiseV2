@@ -1,68 +1,58 @@
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  margin: 0px;
+  background-color: #2b2b2b;
+}
+body, html, #root {
+  width: 100%;
+  height: 100%;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+.SoundRiseLogoMain {
+  width: 45px;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+:root {
+  color-scheme: dark;
+  --main-background-color: #141414; /* eg: TopBar */
+  --second-background-color: #121212; /* eg: body */
+  --text-color: #f1f1f1;
+  --link-color: #176bfd;
+  --button-background: #006AFF;
+  --button-text: #6a11cb;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.form-input {
+  background-color: rgb(14, 14, 14);
+  border-radius: 0.25rem; /* Slightly increased border radius for a softer look */
+  border: 1px solid #505050;
+  padding: 12px; /* Increased padding for comfort */
+  transition: all .3s ease-in-out; /* Adjusted transition for smoother effects */
+  font-family: "Poppins", Arial, Helvetica, sans-serif !important;
+  caret-color: rgb(164, 29, 182);
+  color: #e0e0e0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Added subtle shadow */
+  z-index: 1000;
+}
+
+.form-span {
+  font-family: "Poppins", Arial, Helvetica, sans-serif !important;
+  color: #e0e0e0;
+  margin-left: 3px;
+  font-size: 14px; /* Smaller font for hints */
+}
+
+.form-input:focus {
+  transform: translateY(-2px); /* Subtle lift effect */
+  background-color: rgb(20, 20, 20); /* Slightly lighter for focus */
+  border: 1px solid #a41db6; /* Accent color on focus */
+  outline: none;
+  font-family: "Poppins", Arial, Helvetica, sans-serif !important;
+  color: #ffffff; /* Clearer text on focus */
+  box-shadow: 0 4px 10px rgba(153, 49, 167, 0.267); /* Shadow on focus */
+}
+
+.form-input::placeholder {
+  font-family: "Poppins", Arial, Helvetica, sans-serif !important;
+  color: #a0a0a0; /* Placeholder color for better contrast */
+  opacity: 0.8; /* Slightly transparent for a softer look */
 }
