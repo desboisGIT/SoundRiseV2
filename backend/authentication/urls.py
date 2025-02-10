@@ -9,9 +9,9 @@ urlpatterns = [
     path('login/', CustomTokenObtainPairView.as_view(), name='login'), 
     path('refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('logout/', LogoutView.as_view(), name='logout'),
-    path('verify/<str:token>/', VerifyEmailView.as_view(), name='verify-email'),
-    path('', include('allauth.urls')),  
+    path('verify/<str:token>/', VerifyEmailView.as_view(), name='verify-email'),  
     path('social/', include('allauth.socialaccount.urls')),
     path('google/callback/', views.google_callback, name='google_callback'),
+    path('accounts/', include('allauth.urls')),
 
 ]

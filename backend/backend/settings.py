@@ -17,6 +17,12 @@ load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+ENV_PATH = BASE_DIR.parent / ".env"
+
+load_dotenv()
+
+
+
 SITE_ID = 1
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -26,7 +32,27 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = os.getenv("DEBUG") == "True"
 
 ALLOWED_HOSTS = []
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",  # Allow requests from Vite frontend
+]
+CORS_ALLOW_ALL_ORIGINS = True
 
+CORS_ALLOW_METHODS = [
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS",
+]
+
+CORS_ALLOW_HEADERS = [
+    "authorization",
+    "content-type",
+    "x-csrf-token",
+    "access-control-allow-origin",
+    "accept",
+]
 
 # Application definition
 
@@ -52,9 +78,11 @@ INSTALLED_APPS = [
     'dj_rest_auth.registration',
     'social_django',
     'rest_framework.authtoken',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'social_django.middleware.SocialAuthExceptionMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -254,8 +282,11 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 SOCIALACCOUNT_QUERY_EMAIL = True
 SOCIALACCOUNT_AUTO_SIGNUP = True
-SOCIAL_AUTH_GOOGLE_OAUTH2_CALLBACK_URL = 'http://127.0.0.1:8000/accounts/google/login/callback/'
+SOCIALACCOUNT_LOGIN_ON_SIGNUP = True  # Cela connecte directement l'utilisateur après l'inscription
 
+ACCOUNT_FORMS = {
+    'signup': 'authentication.forms.SocialSignupForm', 
+}
 
 
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.getenv('SOCIAL_AUTH_GOOGLE_OAUTH2_KEY')

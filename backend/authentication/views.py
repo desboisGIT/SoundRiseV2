@@ -15,6 +15,7 @@ from django.conf import settings
 from core.models import CustomUser
 from ipware import get_client_ip
 from .security import is_suspicious_ip 
+from allauth.socialaccount.models import SocialAccount
 
 
 
@@ -91,10 +92,15 @@ class VerifyEmailView(APIView):
             return Response({"error": "Token invalide ou expiré."}, status=status.HTTP_400_BAD_REQUEST)
         
 
-
-
-
 def google_callback(request):
-    # Logique pour gérer la réponse de Google
-    return redirect('/')  # Redirige vers la page d'accueil de base Django
+    """
+    Cette vue est appelée lorsque Google retourne la réponse après l'authentification.
+    Elle peut être utilisée pour personnaliser le comportement après une authentification réussie.
+    """
+    user = request.user
+    social_account = SocialAccount.objects.get(user=user, provider='google')
 
+    # Si tu veux ajouter des informations supplémentaires ou personnaliser le comportement
+    # par exemple, rediriger vers une autre page après la connexion :
+    # Par exemple, tu peux rediriger l'utilisateur vers une page spécifique de ton app :
+    return redirect('/')  # Remplace 'home' par le nom de l'URL de ta page d'accueil
