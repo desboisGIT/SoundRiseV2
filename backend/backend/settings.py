@@ -9,21 +9,21 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
-
+import os
 from pathlib import Path
-
+from dotenv import load_dotenv 
+from datetime import timedelta
+load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
+SITE_ID = 1
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure--v%-x7qtk&dw)!=gg&s792z!m31c7c4*)!e3ijo#qo*f(m+vrj'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+SECRET_KEY = os.getenv("SECRET_KEY")
+DEBUG = os.getenv("DEBUG") == "True"
 
 ALLOWED_HOSTS = []
 
@@ -37,9 +37,25 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'axes',
+    'core',
+    'authentication',
+    'oauth2_provider',
+    'django.contrib.sites', 
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google', 
+    'dj_rest_auth',
+    'dj_rest_auth.registration',
+    'social_django',
+    'rest_framework.authtoken',
 ]
 
 MIDDLEWARE = [
+    'social_django.middleware.SocialAuthExceptionMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -47,6 +63,13 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "axes.middleware.AxesMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'allauth.account.middleware.AccountMiddleware',  
+    
+   
+
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -74,11 +97,42 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME"),
+        "USER": os.getenv("DB_USER"),
+        "PASSWORD": os.getenv("DB_PASSWORD"),
+        "HOST": os.getenv("DB_HOST"),
+        "PORT": os.getenv("DB_PORT"),
     }
 }
+
+
+
+AUTH_USER_MODEL = "core.CustomUser"
+
+OAUTH2_PROVIDER = {
+    'ACCESS_TOKEN_EXPIRE_SECONDS': 3600,  # Expire après 1 heure
+    'AUTHORIZATION_CODE_EXPIRE_SECONDS': 600,  # Expire après 10 minutes
+    'ROTATE_REFRESH_TOKENS': True,  # Permet de rafraîchir les tokens
+}
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+    ),
+     "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "5/minute",  # Max 5 requêtes par minute pour un utilisateur anonyme
+        "user": "60/minute",  # Max 60 requêtes par minute pour un utilisateur authentifié
+    }
+}
+
 
 
 # Password validation
@@ -99,7 +153,113 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend', 
+    'django.contrib.auth.backends.ModelBackend',
+    'oauth2_provider.backends.OAuth2Backend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
 
+REST_USE_JWT = True  # Utiliser JWT pour OAuth2
+ACCOUNT_EMAIL_REQUIRED = True
+
+ACCOUNT_LOGIN_METHODS = {"email"}
+
+ACCOUNT_EMAIL_VERIFICATION = 'optional'
+
+AXES_FAILURE_LIMIT = 5  # Bloque après 5 tentatives
+AXES_COOLOFF_TIME = 1  # 1 heure d'attente après 5 échecs
+
+CSRF_COOKIE_SECURE = True  # Active la protection CSRF sur HTTPS
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = "Strict"
+SESSION_COOKIE_SECURE = True  # Sécurise les sessions
+SECURE_BROWSER_XSS_FILTER = True  # Protection XSS
+SECURE_CONTENT_TYPE_NOSNIFF = True  # Protection contre le sniffing MIME
+
+if os.getenv('DJANGO_PRODUCTION') == 'True':
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 an
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+else:
+    SECURE_SSL_REDIRECT = False  # Désactive HTTPS en local  # Redirige automatiquement en HTTPS
+
+X_FRAME_OPTIONS = "DENY"  # Empêche l’inclusion du site dans un iframe
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Expire la session à la fermeture du navigateur
+SESSION_COOKIE_AGE = 3600  # Déconnecte après 1h d'inactivité
+
+
+#CSP_DEFAULT_SRC = ("'self'",)
+#CSP_SCRIPT_SRC = ("'self'", "https://soundrise.fr")
+#CSP_STYLE_SRC = ("'self'", "https://soundrise.fr")
+#CSP_IMG_SRC = ("'self'", "data:")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "file": {
+            "level": "WARNING",
+            "class": "logging.FileHandler",
+            "filename": "security.log",
+        },
+    },
+    "loggers": {
+        "django.security": {
+            "handlers": ["file"],
+            "level": "WARNING",
+            "propagate": True,
+        },
+    },
+}
+
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
+]
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,  # Active la rotation des tokens
+    "BLACKLIST_AFTER_ROTATION": True,  # Blackliste les anciens tokens après rotation
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": os.getenv("JWT_SECRET_KEY"),
+    "VERIFYING_KEY": None,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+    "COOKIE_NAME": "access_token",  # Nom du cookie
+    "COOKIE_HTTPONLY": True,  # Empêche JS d’accéder au token
+    "COOKIE_SECURE": True,  # Active HTTPS uniquement
+}
+
+
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "APP": {
+            "client_id": os.getenv("SOCIAL_AUTH_GOOGLE_OAUTH2_KEY"),
+            "secret": os.getenv("SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET"),
+            "key": "",
+        },
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+    }
+}
+ACCOUNT_SIGNUP_REDIRECT_URL = '/'  # Où rediriger après la connexion.
+SOCIALACCOUNT_AUTO_SIGNUP = True    # Crée automatiquement un utilisateur si ce n'est pas déjà fait.
+
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
+SOCIALACCOUNT_QUERY_EMAIL = True
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIAL_AUTH_GOOGLE_OAUTH2_CALLBACK_URL = 'http://127.0.0.1:8000/accounts/google/login/callback/'
+
+
+
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.getenv('SOCIAL_AUTH_GOOGLE_OAUTH2_KEY')
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.getenv('SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET')
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
@@ -121,3 +281,12 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+# en production :
+#EMAIL_HOST = "smtp.gmail.com"
+#EMAIL_PORT = 587
+#EMAIL_USE_TLS = True
+#EMAIL_HOST_USER = "tonemail@gmail.com"
+#EMAIL_HOST_PASSWORD = "ton_mot_de_passe"
