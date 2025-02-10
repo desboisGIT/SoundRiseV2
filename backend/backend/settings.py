@@ -22,7 +22,10 @@ ENV_PATH = BASE_DIR.parent / ".env"
 load_dotenv()
 
 
-
+ACCOUNT_FORMS = {
+    'signup': 'authentication.forms.SocialSignupForm',  # Pour les inscriptions normales
+    'socialsignup': 'authentication.forms.SocialSignupForm',  # Pour les inscriptions via Google, etc.
+}
 SITE_ID = 1
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -197,8 +200,8 @@ ACCOUNT_LOGIN_METHODS = {"email"}
 
 ACCOUNT_EMAIL_VERIFICATION = 'optional'
 
-AXES_FAILURE_LIMIT = 5  # Bloque après 5 tentatives
-AXES_COOLOFF_TIME = 1  # 1 heure d'attente après 5 échecs
+#AXES_FAILURE_LIMIT = 20  # Bloque après 5 tentatives
+#AXES_COOLOFF_TIME = 1  # 1 heure d'attente après 5 échecs
 
 CSRF_COOKIE_SECURE = True  # Active la protection CSRF sur HTTPS
 CSRF_COOKIE_HTTPONLY = True
@@ -259,7 +262,7 @@ SIMPLE_JWT = {
     "SIGNING_KEY": os.getenv("JWT_SECRET_KEY"),
     "VERIFYING_KEY": None,
     "AUTH_HEADER_TYPES": ("Bearer",),
-     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
     "COOKIE_NAME": "access_token",  # Nom du cookie
     "COOKIE_HTTPONLY": True,  # Empêche JS d’accéder au token
     "COOKIE_SECURE": True,  # Active HTTPS uniquement
@@ -278,7 +281,11 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 ACCOUNT_SIGNUP_REDIRECT_URL = '/'  # Où rediriger après la connexion.
-SOCIALACCOUNT_AUTO_SIGNUP = True    # Crée automatiquement un utilisateur si ce n'est pas déjà fait.
+
+SOCIALACCOUNT_ADAPTER = "authentication.adapters.MySocialAccountAdapter"
+
+SOCIALACCOUNT_ADAPTER = "authentication.adapters.MySocialAccountAdapter"
+
 
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
@@ -286,9 +293,8 @@ SOCIALACCOUNT_QUERY_EMAIL = True
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_LOGIN_ON_SIGNUP = True  # Cela connecte directement l'utilisateur après l'inscription
 
-ACCOUNT_FORMS = {
-    'signup': 'authentication.forms.SocialSignupForm', 
-}
+
+
 
 
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.getenv('SOCIAL_AUTH_GOOGLE_OAUTH2_KEY')
