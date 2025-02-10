@@ -33,18 +33,19 @@ function TopBarButtonDropDown({ title, optionList, position }) {
   }, []);
 
   return (
-    <div
-      className={`TopBarButtonDropDown`}
-      ref={dropdownRef}
-      onClick={() => setIsActive(!isActive)}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <div className="TopBarButton DropDownButton">
+    <div className={`TopBarButtonDropDown`} ref={dropdownRef}>
+      <div
+        className="TopBarButton DropDownButton"
+        onClick={() => setIsActive(!isActive)}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         <p className={`${isHovered ? "white" : "gray"}`}>{title}</p>
         <FontAwesomeIcon
           icon={faChevronDown}
-          className={`chevron-icon ${getArrowDirection()}`}
+          className={`chevron-icon ${getArrowDirection()} ${
+            isHovered ? "white" : "gray"
+          }`}
         />
       </div>
 

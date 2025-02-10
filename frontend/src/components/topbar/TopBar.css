@@ -1,16 +1,21 @@
 .TopBar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: space-evenly;
     padding: 0 10%;
-    height: 70px;
+    height: 69px;
     background-color: var(--main-background-color);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     color: #eee;
     border-bottom: 1px solid rgb(38, 38, 38);
 
 }
-
+.TopBarCenter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 520px;
+}
 .TopBar div {
     -webkit-user-select: none !important;
     /* Safari */
@@ -45,7 +50,7 @@
     display: inline-block;
     font-size: 1em;
     border-radius: 50px;
-    padding: 3px 12px;
+
 
     border: 1px solid rgba(38, 38, 38, 0);
     -moz-transition: all 0.2s ease-in;
@@ -67,12 +72,11 @@
 }
 .rotate-180 {
     transform: rotate(-180deg);
-    color: #fff !important;   
 }
 
 .rotate-90 {
     transform: rotate(-90deg);
-    color: #fff !important;   
+
 }
 
 .rotate-0 {
@@ -97,7 +101,7 @@
     color: #9F9F9F;
 }
 
-.TopBarButtonDropDown:hover {
+.TopBarButton:hover {
     background-color: #1d1d1ddc;
     border: 1px solid rgb(59, 59, 59);
     color: #fff !important;
@@ -109,6 +113,17 @@
     transition: all 0.2s ease-in-out;
     color: #fff;
     font-weight: 400;
+    z-index: 1100;
+    cursor: pointer;
+    font-size: 1em;
+    border-radius: 50px;
+    padding: 3px 12px;
+
+    border: 1px solid rgba(38, 38, 38, 0);
+    -moz-transition: all 0.2s ease-in;
+    -webkit-transition: all 0.2s ease-in;
+    -o-transition: all 0.2s ease-in;
+    transition: all 0.2s ease-in;
 }
 
 .TopBarDropdownMenuOption {
@@ -120,12 +135,14 @@
     pointer-events: none;
 }
 
-.TopBarDropdownMenuOption.active {
+.active {
     pointer-events: all;
+    cursor: pointer;
 }
 
-.TopBarDropdownMenuOption.notActive {
-    pointer-events: none;
+.notActive {
+    pointer-events: none !important;
+    cursor: default !important;
 }
 
 

@@ -29,12 +29,20 @@ function App() {
         <TopBar
           leftComponents={
             <>
-              <img
-                src={MainLogo}
-                alt="SoundRise Logo"
-                className="SoundRiseLogoMain"
-                onClick={() => (window.location.href = "/")}
-              />
+              <div className="SoundRiseLogoContainer">
+                <img
+                  src={MainLogo}
+                  alt="SoundRise Logo"
+                  className="SoundRiseLogoMain"
+                  onClick={() => (window.location.href = "/")}
+                />
+                <p
+                  className="SoundRiseLogoText"
+                  onClick={() => (window.location.href = "/")}
+                >
+                  SoundRise
+                </p>
+              </div>
               <TopBarButtonDropDown
                 title="Feed"
                 optionList={ExploreOptions}
@@ -42,7 +50,7 @@ function App() {
               />
             </>
           }
-          centerComponents={<></>}
+          centerComponents={<div className="TopBarSpace"></div>}
           rightComponents={
             <>
               <TopBarButtonDropDown

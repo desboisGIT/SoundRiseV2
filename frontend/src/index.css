@@ -1,6 +1,6 @@
 body {
   margin: 0px;
-  background-color: #2b2b2b;
+  background-color: #121212;
 }
 body, html, #root {
   width: 100%;
@@ -8,7 +8,7 @@ body, html, #root {
 }
 
 .SoundRiseLogoMain {
-  width: 45px;
+  width: 40px;
 }
 
 :root {
@@ -55,6 +55,23 @@ body, html, #root {
   font-family: "Poppins", Arial, Helvetica, sans-serif !important;
   color: #a0a0a0; /* Placeholder color for better contrast */
   opacity: 0.8; /* Slightly transparent for a softer look */
+}
+
+/* Change the white to any color */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active{
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: #ffffff;
+    transition: background-color 5000s ease-in-out 0s;
+    box-shadow: inset 0 0 20px 20px #23232329;
+}
+
+
+/*Change text in autofill textbox*/
+input:-webkit-autofill{
+  -webkit-text-fill-color: #e0e0e0 !important;
 }
 
 .flex {
