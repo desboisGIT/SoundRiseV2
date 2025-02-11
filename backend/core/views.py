@@ -39,7 +39,7 @@ def get_profile_picture(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+
 def filter_users(request):
     """
     Filtre et affiche les utilisateurs en fonction des champs et critères choisis.

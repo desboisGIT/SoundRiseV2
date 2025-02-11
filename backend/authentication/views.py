@@ -150,7 +150,7 @@ def google_callback(request):
 
     google_id = user_data.get("sub")
     google_email = user_data.get("email")
-    google_name = user_data.get("name", google_email.split("@")[0])
+    google_name = user_data.get("name")
     first_name = user_data.get("given_name", "")
     last_name = user_data.get("family_name", "")
     profile_picture = user_data.get("picture", "")
