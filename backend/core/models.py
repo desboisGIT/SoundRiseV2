@@ -68,7 +68,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     date_joined = models.DateTimeField(auto_now_add=True)
     
     
-    profile_picture = models.ImageField(upload_to="profile_pics/", null=True, blank=True, default="profile_pics/default.jpg")
+    profile_picture = models.ImageField(upload_to="profile_pics/", null=True, blank=True, default="profile_pics/default_profile.png")
 
     bio = models.TextField(blank=True, null=True)
     followers = models.ManyToManyField("self", symmetrical=False, related_name="following", blank=True)
@@ -77,7 +77,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
-
+    
     def __str__(self):  
         return self.username
 

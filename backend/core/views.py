@@ -39,7 +39,6 @@ def get_profile_picture(request):
 
 
 @api_view(["GET"])
-
 def filter_users(request):
     """
     Filtre et affiche les utilisateurs en fonction des champs et critères choisis.
@@ -50,12 +49,11 @@ def filter_users(request):
         - /api/users/filter/?bio__isnull=false&fields=username,email
     """
 
-    queryset = CustomUser.objects.all()
-
     # ✅ Appliquer les filtres dynamiques sur les champs valides
     valid_fields = [field.name for field in CustomUser._meta.fields]  # Liste des champs du modèle
     filter_params = {}
 
+    # Appliquer les filtres de recherche
     for key, value in request.GET.items():
         if key.startswith(("limit", "offset", "fields")):
             continue  # Ne pas inclure ces champs dans les filtres
@@ -66,15 +64,20 @@ def filter_users(request):
         elif value.lower() == "true":
             value = True
 
-        if "__" in key:  # Gestion des filtres avancés (ex: bio__isnull=false)
+        # Appliquer un icontains pour `username`
+        if key == "username":
+            filter_params["username__icontains"] = value  # Utilisation de icontains pour la recherche insensible à la casse
+        elif "__" in key:  # Gestion des filtres avancés (ex: bio__isnull=false)
             base_field = key.split("__")[0]
+            if base_field in valid_fields:
+                filter_params[key] = value
         else:
             base_field = key
+            if base_field in valid_fields:
+                filter_params[key] = value
 
-        if base_field in valid_fields:
-            filter_params[key] = value
-
-    queryset = queryset.filter(**filter_params)
+    # ✅ Appliquer les filtres à la requête directement sur la base de données
+    queryset = CustomUser.objects.filter(**filter_params)
 
     # ✅ Pagination sécurisée
     try:
@@ -87,6 +90,7 @@ def filter_users(request):
     except (ValueError, TypeError):
         offset = 0  # Par défaut
 
+    # Appliquer la pagination sur le queryset
     total_users = queryset.count()
     users = queryset[offset : offset + limit]
 
@@ -97,12 +101,14 @@ def filter_users(request):
     fields = request.GET.get("fields", "").split(",") if "fields" in request.GET else None
 
     if fields:
+        # Si des champs spécifiques sont demandés, filtrer les champs dans les résultats
         data = [
             {field: user[field] for field in fields if field in user}
             for user in serializer.data
         ]
     else:
-        data = serializer.data  # Si aucun champ spécifié, on retourne tout
+        # Si aucun champ spécifié, retourner tous les champs
+        data = serializer.data
 
     return Response({
         "total": total_users,
@@ -110,6 +116,7 @@ def filter_users(request):
         "offset": offset,
         "users": data
     })
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

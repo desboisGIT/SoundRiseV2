@@ -86,6 +86,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'beats',
     'rest_framework_simplejwt.token_blacklist',
+    'django_filters',
 ]
 
 MIDDLEWARE = [
@@ -163,9 +164,14 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.UserRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
-        "anon": "5/minute",  # Max 5 requêtes par minute pour un utilisateur anonyme
-        "user": "60/minute",  # Max 60 requêtes par minute pour un utilisateur authentifié
-    }
+        "anon": "100/minute",  # Max 5 requêtes par minute pour un utilisateur anonyme
+        "user": "500/minute",  # Max 60 requêtes par minute pour un utilisateur authentifié
+    },
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.OrderingFilter',
+        'rest_framework.filters.SearchFilter',
+    ],
 }
 
 

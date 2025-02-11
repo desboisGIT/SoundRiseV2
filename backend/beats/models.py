@@ -1,6 +1,7 @@
 from django.db import models
 from core.models import CustomUser
-
+from django.db.models.signals import m2m_changed
+from django.dispatch import receiver
 
 class Beat(models.Model):
     """
@@ -20,8 +21,22 @@ class Beat(models.Model):
         default="lease"
     )  # Type de licence
     likes = models.ManyToManyField(CustomUser, related_name="liked_beats", blank=True)  # Système de likes
+    likes_count = models.IntegerField(default=0)
+
     created_at = models.DateTimeField(auto_now_add=True)  # Date de création
     updated_at = models.DateTimeField(auto_now=True)  # Dernière mise à jour
 
     def __str__(self):
         return f"{self.title} - {self.user.username}"
+    
+@receiver(m2m_changed, sender=Beat.likes.through)
+def update_likes_count(sender, instance, action, **kwargs):
+    """
+    Met à jour le nombre de likes chaque fois qu'un like est ajouté ou retiré.
+    """
+    if action in ["post_add", "post_remove"]:
+        # Calculer et mettre à jour le nombre de likes
+        instance.likes_count = instance.likes.count()
+        instance.save()
+        
+    
