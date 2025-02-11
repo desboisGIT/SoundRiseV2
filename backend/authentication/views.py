@@ -16,6 +16,9 @@ from core.models import CustomUser
 from ipware import get_client_ip
 from .security import is_suspicious_ip 
 from allauth.socialaccount.models import SocialAccount
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+from dj_rest_auth.registration.views import SocialLoginView
+from rest_framework.authtoken.models import Token
 
 
 
@@ -90,7 +93,8 @@ class VerifyEmailView(APIView):
             return Response({"message": "Votre email est déjà vérifié."}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"error": "Token invalide ou expiré."}, status=status.HTTP_400_BAD_REQUEST)
-        
+
+
 
 def google_callback(request):
     """
@@ -99,8 +103,15 @@ def google_callback(request):
     """
     user = request.user
     social_account = SocialAccount.objects.get(user=user, provider='google')
+    
+    
 
     # Si tu veux ajouter des informations supplémentaires ou personnaliser le comportement
     # par exemple, rediriger vers une autre page après la connexion :
     # Par exemple, tu peux rediriger l'utilisateur vers une page spécifique de ton app :
     return redirect('/')  # Remplace 'home' par le nom de l'URL de ta page d'accueil
+
+
+class GoogleLoginView(SocialLoginView):
+    adapter_class = GoogleOAuth2Adapter
+    

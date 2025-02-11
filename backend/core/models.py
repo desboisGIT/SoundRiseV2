@@ -63,11 +63,12 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    is_online = models.BooleanField(default=False)
 
     date_joined = models.DateTimeField(auto_now_add=True)
     
     
-    profile_picture = models.ImageField(upload_to="profile_pics/", null=True, blank=True)
+    profile_picture = models.ImageField(upload_to="profile_pics/", null=True, blank=True, default="profile_pics/default.jpg")
 
     bio = models.TextField(blank=True, null=True)
     followers = models.ManyToManyField("self", symmetrical=False, related_name="following", blank=True)

@@ -3,6 +3,7 @@ from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 
 class MySocialAccountAdapter(DefaultSocialAccountAdapter):
     def save_user(self, request, sociallogin, form=None):
+        print("🚀 save_user() appelé")  # Vérifie que la fonction est exécutée
         """
         Sauvegarde et met à jour l'utilisateur avec les données du compte social.
         """
@@ -10,7 +11,6 @@ class MySocialAccountAdapter(DefaultSocialAccountAdapter):
 
         # Récupérer les données du compte social
         extra_data = sociallogin.account.extra_data
-        print("📢 Social Data:", extra_data)  # Debug console
 
         # Mise à jour du modèle utilisateur avec les données Google
         user.username = extra_data.get("name", user.email.split('@')[0])  # Nom propre

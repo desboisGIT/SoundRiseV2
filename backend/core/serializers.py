@@ -7,7 +7,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ["id", "username", "email", "profile_picture","bio"]  
+        fields = ["id", "username", "email", "profile_picture","bio","is_online"]  
     
     def get_profile_picture(self, obj):
         if obj.profile_picture:

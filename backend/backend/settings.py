@@ -26,7 +26,7 @@ ACCOUNT_FORMS = {
     'signup': 'authentication.forms.SocialSignupForm',  # Pour les inscriptions normales
     'socialsignup': 'authentication.forms.SocialSignupForm',  # Pour les inscriptions via Google, etc.
 }
-SITE_ID = 1
+SITE_ID = 2
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
@@ -219,7 +219,7 @@ else:
     SECURE_SSL_REDIRECT = False  # Désactive HTTPS en local  # Redirige automatiquement en HTTPS
 
 X_FRAME_OPTIONS = "DENY"  # Empêche l’inclusion du site dans un iframe
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Expire la session à la fermeture du navigateur
+#SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Expire la session à la fermeture du navigateur
 SESSION_COOKIE_AGE = 3600  # Déconnecte après 1h d'inactivité
 
 
@@ -280,7 +280,8 @@ SOCIALACCOUNT_PROVIDERS = {
         "AUTH_PARAMS": {"access_type": "online"},
     }
 }
-ACCOUNT_SIGNUP_REDIRECT_URL = '/'  # Où rediriger après la connexion.
+ACCOUNT_SIGNUP_REDIRECT_URL = "/api/auth/google/callback/"
+ACCOUNT_LOGIN_REDIRECT_URL = "/api/auth/google/callback/"
 
 SOCIALACCOUNT_ADAPTER = "authentication.adapters.MySocialAccountAdapter"
 
