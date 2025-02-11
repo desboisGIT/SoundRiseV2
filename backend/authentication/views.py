@@ -205,7 +205,7 @@ def google_callback(request):
     # Connexion automatique
     user.backend = "allauth.account.auth_backends.AuthenticationBackend"
     login(request, user, backend=user.backend)
-    return redirect("/")
+    return redirect("http://localhost:5173/")
 
 
 class GoogleLoginView(SocialLoginView):
