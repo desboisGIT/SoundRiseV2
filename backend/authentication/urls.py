@@ -2,8 +2,11 @@ from django.urls import path,include
 from .views import RegisterView,LogoutView,VerifyEmailView,CustomTokenObtainPairView, GoogleLoginView
 from rest_framework_simplejwt.views import  TokenRefreshView
 from . import views
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+from dj_rest_auth.registration.views import SocialLoginView
 
 app_name="authentication"
+
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', CustomTokenObtainPairView.as_view(), name='login'), 
@@ -11,9 +14,13 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(), name='logout'),
     path('verify/<str:token>/', VerifyEmailView.as_view(), name='verify-email'),  
     path('social/', include('allauth.socialaccount.urls')),
-    path('google/callback/', views.google_callback, name='google_callback'),
-    path('accounts/', include('allauth.urls')),
-    path('google/', GoogleLoginView.as_view(), name='google_login'),
-    path("google/callback/", views.google_callback, name="google_callback"),
+    path('google/login/', GoogleLoginView.as_view(), name='google_login'),
+    path('google/callback/', views.google_callback, name='google_callback'),  # Callback
 
 ]
+
+
+
+
+
+
