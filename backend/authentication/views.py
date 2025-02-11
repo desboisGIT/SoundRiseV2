@@ -59,33 +59,15 @@ class RegisterView(CreateAPIView):
         )
 
 
-
-
 class CustomTokenObtainPairView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
         # Vérifie si l'IP est suspecte
         ip, _ = get_client_ip(request)
-        if is_suspicious_ip(ip):  # Correction ici : `request` remplacé par `ip`
+        if is_suspicious_ip(request):
             return Response({"error": "Connexion bloquée pour cette IP."}, status=status.HTTP_403_FORBIDDEN)
         
         # Continue le processus d'authentification
-        response = super().post(request, *args, **kwargs)
-
-        # Récupère l'utilisateur authentifié
-        user = self.get_user(request)
-        if user:
-            user.is_online = True
-            user.save()
-            user_logged_in.send(sender=user.__class__, request=request, user=user)  # Déclencher le signal
-
-        return response
-
-    def get_user(self, request):
-        """Récupère l'utilisateur après l'authentification JWT"""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        return serializer.user
-
+        return super().post(request, *args, **kwargs)
     
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
