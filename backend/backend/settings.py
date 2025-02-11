@@ -84,6 +84,8 @@ INSTALLED_APPS = [
     'social_django',
     'rest_framework.authtoken',
     'corsheaders',
+    'beats',
+    'rest_framework_simplejwt.token_blacklist',
 ]
 
 MIDDLEWARE = [
@@ -199,10 +201,10 @@ ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_LOGIN_METHODS = {"email"}
 
 ACCOUNT_EMAIL_VERIFICATION = 'optional'
-
-#AXES_FAILURE_LIMIT = 20  # Bloque après 5 tentatives
-#AXES_COOLOFF_TIME = 1  # 1 heure d'attente après 5 échecs
-
+#-------------------------------------------------- à modifier ---------------------------------------------
+AXES_FAILURE_LIMIT = 1000  # Bloque après 5 tentatives
+AXES_COOLOFF_TIME = 0.0001  # 1 heure d'attente après 5 échecs
+#-------------------------------------------------- à modifier ---------------------------------------------
 CSRF_COOKIE_SECURE = True  # Active la protection CSRF sur HTTPS
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = "Strict"
@@ -259,13 +261,17 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,  # Active la rotation des tokens
     "BLACKLIST_AFTER_ROTATION": True,  # Blackliste les anciens tokens après rotation
     "ALGORITHM": "HS256",
-    "SIGNING_KEY": os.getenv("JWT_SECRET_KEY"),
+    "SIGNING_KEY": os.getenv("JWT_SECRET_KEY", "your-secret-key"),
     "VERIFYING_KEY": None,
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
     "COOKIE_NAME": "access_token",  # Nom du cookie
     "COOKIE_HTTPONLY": True,  # Empêche JS d’accéder au token
-    "COOKIE_SECURE": True,  # Active HTTPS uniquement
+    "COOKIE_SECURE": True,
+    "TOKEN_BLACKLIST_ENABLED": True,  # Active HTTPS uniquement
+    "TOKEN_BLACKLIST": True,
+    
+    
 }
 
 

@@ -66,32 +66,51 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         if is_suspicious_ip(request):
             return Response({"error": "Connexion bloquée pour cette IP."}, status=status.HTTP_403_FORBIDDEN)
         
-        # Continue le processus d'authentification
-        return super().post(request, *args, **kwargs)
+        # Exécute la logique par défaut d'authentification
+        response = super().post(request, *args, **kwargs)
+
+        # Si la connexion est réussie, récupérer l'utilisateur et mettre à jour son statut en ligne
+        if response.status_code == 200:
+            user = CustomUser.objects.get(email=request.data.get("email"))
+            user.is_online = True
+            user.save(update_fields=["is_online"])  # Mise à jour efficace du champ
+
+        return response
     
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         try:
-            # Vérifier si "refresh" est bien présent dans le body
             refresh_token = request.data.get("refresh", None)
             if not refresh_token:
-                return Response({"error": "Le token de rafraîchissement est requis"}, status=400)
+                return Response({"error": "Le token de rafraîchissement est requis"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Essayer d'invalider le token
+            # Vérifier si l'utilisateur est bien authentifié
+            if not request.user.is_authenticated:
+                return Response({"error": "Utilisateur non authentifié"}, status=status.HTTP_401_UNAUTHORIZED)
+
+            # Essayer d'invalider le token (nécessite la blacklisting activée)
             try:
                 token = RefreshToken(refresh_token)
-                token.blacklist()
+                token.blacklist()  # Vérifie bien que la blacklist est activée
+            except AttributeError:
+                logger.error("Blacklist non activée. Assure-toi que SIMPLE_JWT['TOKEN_BLACKLIST'] = True")
+                return Response({"error": "La blacklist des tokens n'est pas activée"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             except Exception as e:
                 logger.error(f"Erreur lors de l'invalidation du token: {str(e)}")
-                return Response({"error": "Token invalide ou déjà blacklisté"}, status=400)
+                return Response({"error": "Token invalide ou déjà blacklisté"}, status=status.HTTP_400_BAD_REQUEST)
 
-            return Response({"message": "Déconnexion réussie"}, status=204)
+            # Mettre à jour `is_online = False`
+            user = request.user
+            user.is_online = False
+            user.save(update_fields=["is_online"])
+
+            return Response({"message": "Déconnexion réussie"}, status=status.HTTP_204_NO_CONTENT)
 
         except Exception as e:
             logger.error(f"Erreur générale lors de la déconnexion: {str(e)}")
-            return Response({"error": str(e)}, status=400)
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
 
 class VerifyEmailView(APIView):
