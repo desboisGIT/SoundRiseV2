@@ -1,6 +1,5 @@
 from django.shortcuts import render,redirect
-
-# Create your views here.
+import requests
 from rest_framework.generics import CreateAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -21,6 +20,8 @@ from dj_rest_auth.registration.views import SocialLoginView
 from rest_framework.authtoken.models import Token
 import os
 from django.contrib.auth import login
+import logging
+logger = logging.getLogger(__name__)
 
 class RegisterView(CreateAPIView):
     serializer_class = RegisterSerializer
@@ -73,13 +74,26 @@ class LogoutView(APIView):
 
     def post(self, request):
         try:
-            refresh_token = request.data["refresh"]
-            token = RefreshToken(refresh_token)
-            token.blacklist()
-            return Response(status=204)
+            # Vérifier si "refresh" est bien présent dans le body
+            refresh_token = request.data.get("refresh", None)
+            if not refresh_token:
+                return Response({"error": "Le token de rafraîchissement est requis"}, status=400)
+
+            # Essayer d'invalider le token
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            except Exception as e:
+                logger.error(f"Erreur lors de l'invalidation du token: {str(e)}")
+                return Response({"error": "Token invalide ou déjà blacklisté"}, status=400)
+
+            return Response({"message": "Déconnexion réussie"}, status=204)
+
         except Exception as e:
-            return Response(status=400)
+            logger.error(f"Erreur générale lors de la déconnexion: {str(e)}")
+            return Response({"error": str(e)}, status=400)
         
+
 class VerifyEmailView(APIView):
     def get(self, request, token, *args, **kwargs):
         """ Vérifie le token et active le compte """
@@ -94,22 +108,6 @@ class VerifyEmailView(APIView):
         except Exception as e:
             return Response({"error": "Token invalide ou expiré."}, status=status.HTTP_400_BAD_REQUEST)
 
-
-
-from django.shortcuts import redirect
-from django.contrib.auth.decorators import login_required
-from allauth.socialaccount.models import SocialAccount
-
-import os
-import requests
-from django.contrib.auth import login
-from django.shortcuts import redirect
-from allauth.socialaccount.models import SocialAccount
-from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
-from dj_rest_auth.registration.views import SocialLoginView
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
 
 def google_callback(request):
     """
@@ -171,7 +169,7 @@ def google_callback(request):
         print("❌ Aucun compte Google trouvé, création d'un utilisateur...")
 
         # Vérifier si un utilisateur avec cet email existe déjà
-        user, created = User.objects.get_or_create(email=google_email, defaults={
+        user, created = CustomUser.objects.get_or_create(email=google_email, defaults={
             "username": google_name,
             "email": google_email,
             "profile_picture": profile_picture,

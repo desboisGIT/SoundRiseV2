@@ -2,8 +2,7 @@ from django.urls import path,include
 from .views import RegisterView,LogoutView,VerifyEmailView,CustomTokenObtainPairView, GoogleLoginView
 from rest_framework_simplejwt.views import  TokenRefreshView
 from . import views
-from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
-from dj_rest_auth.registration.views import SocialLoginView
+
 
 app_name="authentication"
 
