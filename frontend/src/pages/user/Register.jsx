@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import DefaultForm from "../../components/forms/defaultForm/DefaultForm";
-import axios from "axios";
+import { register } from "../../api/auth";
 
 export default function Register() {
   const [username, setUsername] = useState("");
@@ -15,16 +15,8 @@ export default function Register() {
     setSuccess(false);
 
     try {
-      const response = await axios.post(
-        "http://localhost:8000/api/auth/register/",
-        {
-          username,
-          email,
-          password,
-        }
-      );
-
-      console.log("Registration successful:", response.data);
+      const response = await register(username, email, password);
+      console.log("Registration successful:", response);
       setSuccess(true);
 
       // Redirect to login after a short delay
@@ -69,7 +61,17 @@ export default function Register() {
           required
         />
 
-        {error && <p className="error-message">{error}</p>}
+        {error && (
+          <div className="error-message">
+            {typeof error === "string" ? (
+              <p>{error}</p>
+            ) : (
+              Object.entries(error).map(([key, value]) => (
+                <p key={key}>{`${key}: ${value}`}</p>
+              ))
+            )}
+          </div>
+        )}
         {success && (
           <p className="success-message">
             Registration successful! Redirecting...

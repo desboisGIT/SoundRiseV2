@@ -14,3 +14,12 @@ export const register = async (username, email, password) => {
   const response = await axios.post(`${API_URL}/register/`, { username, email, password });
   return response.data;
 };
+
+export const logout = () => {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+  delete axios.defaults.headers.common["Authorization"];
+  window.location.href = "/login"; // Redirect to login page
+};
+
+

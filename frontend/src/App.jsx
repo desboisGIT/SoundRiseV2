@@ -4,79 +4,95 @@ import TopBarButton from "./components/topbar/subComponents/TopBarButton";
 import TopBar from "./components/topbar/TopBar";
 import MainLogo from "./assets/main_logo.svg";
 import LandingPage from "./pages/site/LandingPage";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useNavigate,
+} from "react-router-dom";
 import LogIn from "./pages/user/LogIn";
 import Register from "./pages/user/Register";
+import React from "react";
+import axios from "axios";
+import Account from "./pages/user/Account";
 
-const accountsOptions = [
-  ["Profile", () => console.log("Profile/")],
-  ["Settings", () => console.log("Settings/")],
-  ["Messages", () => console.log("Messages/")],
-  ["Log Out", () => console.log("Log Out/")],
-];
+const App = () => {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
+  );
+};
+const handleLogout = () => {
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  axios.defaults.headers.common["Authorization"] = null;
+  console.log("Logged out");
+};
 
-const ExploreOptions = [
-  ["Beats", () => console.log("Beats/")],
-  ["SoundTracks", () => console.log("SoundTracks/")],
-  ["Trending", () => console.log("Trendings/")],
-  ["Free", () => console.log("Free/")],
-];
+const AppContent = () => {
+  const navigate = useNavigate();
 
-function App() {
+  const accountsOptions = [
+    ["Profile", () => navigate("/account")],
+    ["Settings", () => console.log("Settings")],
+    ["Messages", () => console.log("Messages")],
+    ["Log Out", handleLogout],
+  ];
+
+  const ExploreOptions = [
+    ["Beats", () => console.log("Beats")],
+    ["SoundTracks", () => console.log("SoundTracks")],
+    ["Trending", () => console.log("Trending")],
+    ["Free", () => console.log("Free")],
+  ];
+
   return (
     <>
-      <Router>
-        <TopBar
-          leftComponents={
-            <>
-              <div className="SoundRiseLogoContainer">
-                <img
-                  src={MainLogo}
-                  alt="SoundRise Logo"
-                  className="SoundRiseLogoMain"
-                  onClick={() => (window.location.href = "/")}
-                />
-                <p
-                  className="SoundRiseLogoText"
-                  onClick={() => (window.location.href = "/")}
-                >
-                  SoundRise
-                </p>
-              </div>
-              <TopBarButtonDropDown
-                title="Feed"
-                optionList={ExploreOptions}
-                position={"center"}
+      <TopBar
+        leftComponents={
+          <>
+            <div className="SoundRiseLogoContainer">
+              <img
+                src={MainLogo}
+                alt="SoundRise Logo"
+                className="SoundRiseLogoMain"
+                onClick={() => navigate("/")}
               />
-            </>
-          }
-          centerComponents={<div className="TopBarSpace"></div>}
-          rightComponents={
-            <>
-              <TopBarButtonDropDown
-                title="Accounts"
-                optionList={accountsOptions}
-                position={"center"}
-              />
-              <TopBarButton
-                title="Log In"
-                action={() => (window.location.href = "/login/")}
-              />
-              <TopBarButton
-                title="Register"
-                action={() => (window.location.href = "/register/")}
-              />
-            </>
-          }
-        />
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="login/" element={<LogIn />} />
-          <Route path="register/" element={<Register />} />
-        </Routes>
-      </Router>
+              <p className="SoundRiseLogoText" onClick={() => navigate("/")}>
+                SoundRise
+              </p>
+            </div>
+            <TopBarButtonDropDown
+              title="Feed"
+              optionList={ExploreOptions}
+              position={"center"}
+            />
+          </>
+        }
+        rightComponents={
+          <>
+            <TopBarButtonDropDown
+              title="Accounts"
+              optionList={accountsOptions}
+              position={"center"}
+            />
+            <TopBarButton title="Log In" action={() => navigate("/login")} />
+            <TopBarButton
+              title="Register"
+              action={() => navigate("/register")}
+            />
+          </>
+        }
+      />
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LogIn />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/account" element={<Account />} />
+      </Routes>
     </>
   );
-}
+};
 
 export default App;

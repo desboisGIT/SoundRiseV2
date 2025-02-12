@@ -8,3 +8,30 @@
     justify-content: center;
     padding-top: 10%;
 }
+
+.google-login-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 15px;
+    background-color: #4285F4;
+    color: white;
+    font-size: 14px;
+    border: none;
+    border-radius: 4px;
+    width: 100%;
+    max-width: 300px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+  }
+  
+  .google-login-button:hover {
+    background-color: #357AE8;
+  }
+  
+  .google-logo {
+    width: 20px;
+    margin-right: 10px;
+  }
+  
