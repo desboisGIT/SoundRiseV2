@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv 
 from datetime import timedelta
+from corsheaders.defaults import default_headers
 load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -38,10 +39,14 @@ DEBUG = os.getenv("DEBUG") == "True"
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Allow requests from Vite frontend
 ]
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_CREDENTIALS = True
+# SECURITY WARNING: update this when you have the production host
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
-
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "x-csrftoken",  # Required for CSRF handling
+]
 CORS_ALLOW_METHODS = [
     "GET",
     "POST",
@@ -51,15 +56,12 @@ CORS_ALLOW_METHODS = [
     "OPTIONS",
 ]
 
-CORS_ALLOW_HEADERS = [
-    "authorization",
-    "content-type",
-    "x-csrf-token",
-    "access-control-allow-origin",
-    "accept",
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
 ]
 
 # Application definition
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -88,6 +90,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'django_filters',
 ]
+
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -211,10 +214,10 @@ ACCOUNT_EMAIL_VERIFICATION = 'optional'
 AXES_FAILURE_LIMIT = 1000  # Bloque après 5 tentatives
 AXES_COOLOFF_TIME = 0.0001  # 1 heure d'attente après 5 échecs
 #-------------------------------------------------- à modifier ---------------------------------------------
-CSRF_COOKIE_SECURE = True  # Active la protection CSRF sur HTTPS
+CSRF_COOKIE_SECURE = False  # Active la protection CSRF sur HTTPS
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = "Strict"
-SESSION_COOKIE_SECURE = True  # Sécurise les sessions
+SESSION_COOKIE_SECURE = False  # Sécurise les sessions
 SECURE_BROWSER_XSS_FILTER = True  # Protection XSS
 SECURE_CONTENT_TYPE_NOSNIFF = True  # Protection contre le sniffing MIME
 

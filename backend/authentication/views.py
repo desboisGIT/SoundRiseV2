@@ -21,7 +21,13 @@ from rest_framework.authtoken.models import Token
 import os
 from django.contrib.auth import login
 import logging
+from rest_framework.decorators import api_view
+from google.auth.transport.requests import Request
+from google.oauth2 import id_token
 logger = logging.getLogger(__name__)
+from django.http import JsonResponse
+import requests
+import json
 
 class RegisterView(CreateAPIView):
     serializer_class = RegisterSerializer
@@ -127,105 +133,96 @@ class VerifyEmailView(APIView):
         except Exception as e:
             return Response({"error": "Token invalide ou expiré."}, status=status.HTTP_400_BAD_REQUEST)
 
+from django.views.decorators.csrf import csrf_exempt
 
+
+def get_tokens_for_user(user):
+    refresh = RefreshToken.for_user(user)
+    return {
+        "refresh": str(refresh),
+        "access": str(refresh.access_token),
+    }
+
+@csrf_exempt
 def google_callback(request):
     """
     Vérifie si un utilisateur a un compte Google. Si oui, connecte-le, sinon crée un compte.
     """
-    print("🚀 google_callback() appelée")
+    print("Google Callback")
 
-    # Redirection si on est en GET sans code
-    if request.method == "GET" and "code" not in request.GET:
-        print("🔄 Requête GET sans code, redirection vers Google login...")
-        return redirect("/api/auth/google/login/")
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid request method"}, status=400)
 
-    # Récupérer le code envoyé par Google
-    code = request.GET.get("code")
-
-    # Échanger le code contre un token d'accès Google
-    token_url = "https://oauth2.googleapis.com/token"
-    data = {
-        "code": code,
-        "client_id": os.getenv("SOCIAL_AUTH_GOOGLE_OAUTH2_KEY"),
-        "client_secret": os.getenv("SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET"),
-        "redirect_uri": "http://127.0.0.1:8000/api/auth/google/callback/",
-        "grant_type": "authorization_code",
-    }
-
-    token_response = requests.post(token_url, data=data)
-    token_json = token_response.json()
-
-    if "access_token" not in token_json:
-        print("❌ Échec de l'obtention du token Google :", token_json)
-        return redirect("/api/auth/google/login/")
-
-    access_token = token_json["access_token"]
-
-    # Obtenir les informations utilisateur de Google
-    user_info_url = "https://www.googleapis.com/oauth2/v3/userinfo"
-    headers = {"Authorization": f"Bearer {access_token}"}
-    user_info_response = requests.get(user_info_url, headers=headers)
-    user_data = user_info_response.json()
-
-    google_id = user_data.get("sub")
-    google_email = user_data.get("email")
-    google_name = user_data.get("name")
-    first_name = user_data.get("given_name", "")
-    last_name = user_data.get("family_name", "")
-    profile_picture = user_data.get("picture", "")
-
-    if not google_id or not google_email:
-        print("❌ Données utilisateur Google incomplètes :", user_data)
-        return redirect("/api/auth/google/login/")
-
-    # Vérifier si un SocialAccount existe déjà
     try:
-        social_account = SocialAccount.objects.get(uid=google_id, provider="google")
-        user = social_account.user
-        print("✅ Compte Google trouvé :", user)
+        # Récupérer le token depuis le body JSON
+        data = json.loads(request.body)
+        token_id = data.get("token")
 
-    except SocialAccount.DoesNotExist:
-        print("❌ Aucun compte Google trouvé, création d'un utilisateur...")
+        if not token_id:
+            return JsonResponse({"error": "No token provided"}, status=400)
 
-        # Vérifier si un utilisateur avec cet email existe déjà
-        user, created = CustomUser.objects.get_or_create(email=google_email, defaults={
-            "username": google_name,
-            "email": google_email,
-            "profile_picture": profile_picture,
-        
-        })
+        # Vérifier le token auprès de Google
+        token_url = "https://oauth2.googleapis.com/tokeninfo"
+        token_response = requests.get(f"{token_url}?id_token={token_id}")
 
-        if created:
-            print("✅ Nouvel utilisateur créé :", user)
-        else:
-            print("⚠️ Un utilisateur avec cet email existe déjà mais sans compte Google.")
+        if token_response.status_code != 200:
+            return JsonResponse({"error": "Invalid token"}, status=400)
 
+        user_info = token_response.json()
+        google_id = user_info.get("sub")
+        google_email = user_info.get("email")
+        google_name = user_info.get("name")
 
-        extra_data = {
-            "google_id": google_id,
-            "email": google_email,
-            "name": google_name,
-            "first_name": first_name,
-            "last_name": last_name,
-            "picture": profile_picture,
-        }
+        if not google_id or not google_email:
+            return JsonResponse({"error": "Invalid user data from Google"}, status=400)
 
-        # Associer un SocialAccount au nouvel utilisateur
-        social_account = SocialAccount.objects.create(
-            user=user,
-            provider="google",
-            uid=google_id,
-            extra_data=extra_data,
+        # Vérifier si l'utilisateur existe déjà
+        try:
+            social_account = SocialAccount.objects.get(uid=google_id, provider="google")
+            user = social_account.user
+        except SocialAccount.DoesNotExist:
+            user, created = CustomUser.objects.get_or_create(
+                email=google_email,
+                defaults={"username": google_name}
+            )
+            social_account = SocialAccount.objects.create(
+                user=user,
+                provider="google",
+                uid=google_id,
+                extra_data=user_info,
+            )
+
+        # Générer un token JWT
+        tokens = get_tokens_for_user(user)
+
+        # Connecter l'utilisateur
+        user.backend = "allauth.account.auth_backends.AuthenticationBackend"
+        login(request, user, backend=user.backend)
+
+        # Retourner la réponse avec le token
+        response = JsonResponse({"message": "Login successful", "tokens": tokens})
+
+        # Optionnel: Stocker le token dans un cookie sécurisé (alternative à localStorage)
+        response.set_cookie(
+            key="access_token",
+            value=tokens["access"],
+            httponly=True,
+            secure=True,  # Change to False for localhost testing
+            samesite="Strict"
         )
-        print("✅ SocialAccount créé :", social_account)
 
-    # Connexion automatique
-    user.backend = "allauth.account.auth_backends.AuthenticationBackend"
-    login(request, user, backend=user.backend)
-    return redirect("http://localhost:5173/")
+        return response
+
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    except Exception as e:
+        print("Error in google_callback:", str(e))
+        return JsonResponse({"error": "Internal Server Error"}, status=500)
 
 
 class GoogleLoginView(SocialLoginView):
+
     def get(self, request, *args, **kwargs):
         client_id = os.getenv('SOCIAL_AUTH_GOOGLE_OAUTH2_KEY')
         redirect_url = f"https://accounts.google.com/o/oauth2/auth?client_id={client_id}&redirect_uri=http://127.0.0.1:8000/api/auth/google/callback/&response_type=code&scope=openid email profile"
@@ -236,3 +233,4 @@ class GoogleLoginView(SocialLoginView):
     Si l'utilisateur n'a pas de compte, il en crée un.
     """
     adapter_class = GoogleOAuth2Adapter
+
