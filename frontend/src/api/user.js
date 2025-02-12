@@ -25,7 +25,7 @@ const refreshAccessToken = async () => {
 
 export const getUserInfo = async () => {
   let accessToken = localStorage.getItem("access_token");
-
+  console.log("ca marche pas"); 
   try {
     const response = await axios.get(API_URL, {
       headers: {
@@ -43,5 +43,25 @@ export const getUserInfo = async () => {
     }
     console.error("Not logged in:", error);
     return null;
+  }
+};
+
+
+const API_URL_ISLOGGEDIN = "http://127.0.0.1:8000/api/user/?fields=is_online"; // Ensure this is defined
+export const isLoggedIn = async () => {
+  const accessToken = localStorage.getItem("access_token");
+  if (!accessToken) return false; // Immediately return false if no token exists
+
+  try {
+    const response = await axios.get(API_URL_ISLOGGEDIN, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.status === 200;
+  } catch (error) {
+    // You could check error.response.status if you need to handle specific cases.
+    // For now, return false for any error.
+    return false;
   }
 };

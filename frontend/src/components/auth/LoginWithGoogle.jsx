@@ -1,17 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
-
-const clientId =
-  "162639459241-vfs3ogmpn0fb9jhva7fhfc18k1qlqqm0.apps.googleusercontent.com";
+import { GoogleLogin } from "@react-oauth/google";
 
 const LoginWithGoogle = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (token) setIsLoggedIn(true);
-  }, []);
-
   const onSuccess = async (response) => {
     const tokenId = response.credential;
 
@@ -49,15 +39,15 @@ const LoginWithGoogle = () => {
   };
 
   return (
-    <GoogleOAuthProvider clientId={clientId}>
-      <div>
-        {isLoggedIn ? (
-          <p>✅ Logged in! (Token saved)</p>
-        ) : (
-          <GoogleLogin onSuccess={onSuccess} onError={onFailure} />
-        )}
-      </div>
-    </GoogleOAuthProvider>
+    <GoogleLogin
+      onSuccess={onSuccess}
+      onError={onFailure}
+      theme="filled_black"
+      text="continue_with"
+      size="large"
+      width="283"
+      clas
+    />
   );
 };
 
