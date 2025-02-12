@@ -10,6 +10,14 @@ from .forms import ProfilePictureForm
 from django.db.models import Q
 from rest_framework import status, generics
 from rest_framework.parsers import MultiPartParser, FormParser
+from urllib.parse import urlparse, unquote
+import urllib.parse
+
+
+
+
+
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -33,9 +41,21 @@ def get_user_profile(request):
 @permission_classes([IsAuthenticated])  # L'utilisateur doit être connecté
 def get_profile_picture(request):
     user = request.user
+
     if user.profile_picture:
-        profile_picture_url = request.build_absolute_uri(user.profile_picture.url)
+        profile_picture_url = user.profile_picture.url
+
+        if "profile_pics" in profile_picture_url:
+            # Convertir en URL absolue si nécessaire
+            profile_picture_url = request.build_absolute_uri(profile_picture_url)
+        else:
+            # Supprimer "/media/" de l'URL
+            profile_picture_url = profile_picture_url.replace("/media/", "")
+            # Décoder l'URL si elle contient des caractères encodés
+            profile_picture_url = urllib.parse.unquote(profile_picture_url)
+
         return Response({"profile_picture": profile_picture_url})
+
     return Response({"profile_picture": None})
 
 
@@ -77,7 +97,7 @@ def filter_users(request):
             base_field = key
             if base_field in valid_fields:
                 filter_params[key] = value
-
+        
     # ✅ Appliquer les filtres à la requête directement sur la base de données
     queryset = CustomUser.objects.filter(**filter_params)
 
@@ -112,12 +132,32 @@ def filter_users(request):
         # Si aucun champ spécifié, retourner tous les champs
         data = serializer.data
 
+    # ✅ Formater les URLs correctement
+    for user in data:
+        if "profile_pics"  in user["profile_picture"]:
+            profile_picture_url = user['profile_picture']
+            
+            user['profile_picture'] = request.build_absolute_uri(profile_picture_url)
+        else :
+            profile_picture_url = user['profile_picture']
+            
+            profile_picture_url = profile_picture_url.replace("/media/", "")
+            # Si c'est une URL relative, construis l'URL absolue
+            profile_picture_url = urllib.parse.unquote(profile_picture_url)
+            
+            user['profile_picture'] = profile_picture_url
+            
+
+
+    
+    
     return Response({
         "total": total_users,
         "limit": limit,
         "offset": offset,
         "users": data
     })
+
 
 
 @api_view(['POST'])

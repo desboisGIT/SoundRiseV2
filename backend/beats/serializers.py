@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Beat, License, BeatTrack
+from .models import Beat, License, BeatTrack,BeatComment
 
 class BeatSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(source='user.id', read_only=True)  # Afficher l'ID de l'utilisateur
@@ -63,3 +63,19 @@ class BeatActionSerializer(serializers.ModelSerializer):
     def get_is_favorited(self, obj):
         user = self.context["request"].user
         return user.is_authenticated and obj.favorites.filter(id=user.id).exists()
+    
+
+class BeatCommentSerializer(serializers.ModelSerializer):
+    username = serializers.ReadOnlyField(source="user.username")  # Ajout du nom de l'utilisateur
+
+    class Meta:
+        model = BeatComment
+        fields = ["id", "beat", "user", "username", "content", "created_at"]
+        read_only_fields = ["id", "user", "created_at"]  # L'utilisateur et la date sont en lecture seule
+
+    def create(self, validated_data):
+        """ Associer l'utilisateur connecté au commentaire """
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            validated_data["user"] = request.user
+        return super().create(validated_data)

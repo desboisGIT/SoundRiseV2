@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from rest_framework.routers import DefaultRouter
-from .views import BeatViewSet, LicenseViewSet, BeatTrackViewSet, test_tracks
+from .views import BeatViewSet, LicenseViewSet, BeatTrackViewSet, BeatCommentViewSet
 router = DefaultRouter()
 router.register(r"beats", BeatViewSet)
 urlpatterns = [
@@ -46,5 +46,13 @@ urlpatterns = [
 
     path('<int:pk>/like/', BeatViewSet.as_view({'post': 'like'}), name='like_beat'),
     path('<int:pk>/favorite/', BeatViewSet.as_view({'post': 'favorite'}), name='favorite_beat'),
+
+    path("comments/", BeatCommentViewSet.as_view({"get": "list", "post": "create"}), name="get_comments"),
+    path("comments/<int:pk>/", BeatCommentViewSet.as_view({
+        "get": "retrieve",
+        "put": "update",
+        "patch": "partial_update",
+        "delete": "destroy"
+    }), name="comment_detail"),
 ]
 

@@ -1,14 +1,15 @@
 
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .models import Beat,License,BeatTrack
-from .serializers import BeatSerializer,BeatActionSerializer,LicenseSerializer,BeatTrackSerializer
+from .models import Beat,License,BeatTrack,BeatComment
+from .serializers import BeatSerializer,BeatActionSerializer,LicenseSerializer,BeatTrackSerializer,BeatCommentSerializer
 from django.db.models import Q
 from core.models import CustomUser
 from rest_framework import viewsets, permissions
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework.decorators import action
 from rest_framework import viewsets, status
+
 
 @api_view(['GET'])
 def filter_beats(request):
@@ -106,6 +107,8 @@ def filter_beats(request):
     else:
         data = serializer.data  # Si aucun champ spécifié, on retourne tout
 
+    
+
     return Response({
         "total": total_beats,
         "limit": limit,
@@ -164,6 +167,17 @@ class BeatTrackViewSet(viewsets.ModelViewSet):
 from django.http import JsonResponse
 
 
-def test_tracks(request):
-    tracks = list(BeatTrack.objects.values())  # Récupère les objets sous forme de dictionnaire
-    return JsonResponse(tracks, safe=False)  # Renvoie la liste en JSON
+class BeatCommentViewSet(viewsets.ModelViewSet):
+    serializer_class = BeatCommentSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        """ Récupère les commentaires d'un beat """
+        beat_id = self.request.query_params.get("beat_id")
+        if beat_id:
+            return BeatComment.objects.filter(beat_id=beat_id)
+        return BeatComment.objects.all()
+
+    def perform_create(self, serializer):
+        """ Assigner l'utilisateur connecté au commentaire """
+        serializer.save(user=self.request.user)

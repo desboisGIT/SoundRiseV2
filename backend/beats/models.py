@@ -103,6 +103,25 @@ class Beat(models.Model):
         return f"{self.title} - {self.main_artist.username}"
 
 
+
+
+class BeatComment(models.Model):
+    beat = models.ForeignKey("Beat", on_delete=models.CASCADE, related_name="comments")
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]  # Les commentaires les plus récents en premier
+
+    def __str__(self):
+        return f"{self.user.username} - {self.beat.title}"
+
+
+
+
+
 class BeatTrack(models.Model):
     """
     Modèle pour gérer plusieurs pistes audio associées à un Beat.
