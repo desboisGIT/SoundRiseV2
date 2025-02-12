@@ -6,6 +6,7 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from django.db import models
 from django.core.validators import MinLengthValidator, RegexValidator, EmailValidator
 from django.utils.translation import gettext_lazy as _
+import urllib.parse
 
 class CustomUserManager(BaseUserManager):
     """Gestionnaire de création des utilisateurs et superutilisateurs"""
@@ -80,6 +81,12 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     
     def __str__(self):  
         return self.username
+    
+    def get_profile_picture_url(self, obj):
+        if obj.profile_picture:
+            path = obj.profile_picture.url.replace("/media/", "")
+            return urllib.parse.unquote(path)  # Décodage ici
+        return None
 
 
 

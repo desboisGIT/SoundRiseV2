@@ -89,8 +89,9 @@ INSTALLED_APPS = [
     'beats',
     'rest_framework_simplejwt.token_blacklist',
     'django_filters',
+    'django_extensions',
 ]
-
+ROOT_URLCONF = "backend.urls"
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -111,7 +112,6 @@ MIDDLEWARE = [
 
 ]
 
-ROOT_URLCONF = 'backend.urls'
 
 TEMPLATES = [
     {
@@ -167,8 +167,8 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.UserRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
-        "anon": "100/minute",  # Max 5 requêtes par minute pour un utilisateur anonyme
-        "user": "500/minute",  # Max 60 requêtes par minute pour un utilisateur authentifié
+        "anon": "100/minute",  # Max 100 requêtes par minute pour un utilisateur anonyme
+        "user": "500/minute",  # Max 500 requêtes par minute pour un utilisateur authentifié
     },
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
@@ -176,7 +176,6 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
     ],
 }
-
 
 
 # Password validation

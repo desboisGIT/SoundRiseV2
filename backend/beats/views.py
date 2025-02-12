@@ -1,11 +1,14 @@
 
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .models import Beat
-from .serializers import BeatSerializer
+from .models import Beat,License,BeatTrack
+from .serializers import BeatSerializer,BeatActionSerializer,LicenseSerializer,BeatTrackSerializer
 from django.db.models import Q
 from core.models import CustomUser
-
+from rest_framework import viewsets, permissions
+from rest_framework.permissions import IsAuthenticated,AllowAny
+from rest_framework.decorators import action
+from rest_framework import viewsets, status
 
 @api_view(['GET'])
 def filter_beats(request):
@@ -109,3 +112,58 @@ def filter_beats(request):
         "offset": offset,
         "beats": data
     })
+
+
+class BeatViewSet(viewsets.ModelViewSet):
+    """
+    API pour gérer les Beats.
+    """
+    queryset = Beat.objects.all()
+    serializer_class = BeatActionSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def perform_create(self, serializer):
+        serializer.save(main_artist=self.request.user)  # Associe le beat à l'utilisateur connecté
+    
+    @action(detail=True, methods=["post"])
+    def like(self, request, pk=None):
+        beat = self.get_object()
+        user = request.user
+        if beat.likes.filter(id=user.id).exists():
+            beat.likes.remove(user)
+            return Response({"message": "Like removed"}, status=status.HTTP_200_OK)
+        beat.likes.add(user)
+        return Response({"message": "Liked"}, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"])
+    def favorite(self, request, pk=None):
+        beat = self.get_object()
+        user = request.user
+        if beat.favorites.filter(id=user.id).exists():
+            beat.favorites.remove(user)
+            return Response({"message": "Removed from favorites"}, status=status.HTTP_200_OK)
+        beat.favorites.add(user)
+        return Response({"message": "Added to favorites"}, status=status.HTTP_201_CREATED)
+
+
+class LicenseViewSet(viewsets.ModelViewSet):
+    """
+    API pour gérer les Licenses.
+    """
+    queryset = License.objects.all()
+    serializer_class = LicenseSerializer
+    http_method_names = ["get", "post", "put", "patch", "delete"]  # Vérifie bien que "post" est là !
+    permission_classes = [AllowAny]
+    
+
+class BeatTrackViewSet(viewsets.ModelViewSet):
+    queryset = BeatTrack.objects.all()  # ✅ S'assurer que tous les objets sont récupérés
+    serializer_class = BeatTrackSerializer
+    permission_classes = [AllowAny]
+    
+from django.http import JsonResponse
+
+
+def test_tracks(request):
+    tracks = list(BeatTrack.objects.values())  # Récupère les objets sous forme de dictionnaire
+    return JsonResponse(tracks, safe=False)  # Renvoie la liste en JSON

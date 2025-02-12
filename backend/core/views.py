@@ -4,10 +4,12 @@ from django.http import JsonResponse
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from .serializers import CustomUserSerializer
+from .serializers import CustomUserSerializer,ProfilePictureSerializer
 from .models import CustomUser
 from .forms import ProfilePictureForm
 from django.db.models import Q
+from rest_framework import status, generics
+from rest_framework.parsers import MultiPartParser, FormParser
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -128,3 +130,22 @@ def update_profile_picture(request):
         return Response({'status': 'success', 'profile_picture_url': user.get_profile_picture_url()})
     else:
         return Response({'status': 'error', 'errors': form.errors}, status=400)
+    
+
+class ProfilePictureUpdateView(generics.UpdateAPIView):
+    """
+    Vue pour mettre à jour uniquement la photo de profil
+    """
+    serializer_class = ProfilePictureSerializer
+    permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
+
+    def get_object(self):
+        return self.request.user  # On récupère l'utilisateur connecté
+
+    def put(self, request, *args, **kwargs):
+        serializer = self.get_serializer(instance=self.get_object(), data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

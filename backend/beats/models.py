@@ -3,6 +3,7 @@ from core.models import CustomUser
 from django.db.models.signals import m2m_changed
 from django.dispatch import receiver
 from django.utils.timezone import now
+from mutagen import File
 
 
 
@@ -10,15 +11,18 @@ class Beat(models.Model):
     """
     Modèle représentant un beat musical sur Soundrise.
     """
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="beats")  # Créateur du beat
+    
     title = models.CharField(max_length=255)  # Titre du beat
     cover_image = models.ImageField(upload_to="beats/covers/", blank=True, null=True)  # Image de couverture optionnelle
     bpm = models.PositiveIntegerField(default=120)  # BPM (tempo)
     key = models.CharField(max_length=10, blank=True, null=True)  # Clé musicale (ex: C#m, F#)
     genre = models.CharField(max_length=100, blank=True, null=True)  # Genre du beat (Hip-Hop, Trap, Afrobeat...)
 
+    main_track = models.ForeignKey('BeatTrack', on_delete=models.SET_NULL, null=True, blank=True, related_name='main_beats')  # Piste principale sélectionnée
+    duration = models.FloatField(blank=True, null=True, help_text="Durée de la piste sélectionnée en secondes")  # Durée de la piste sélectionnée
+    audio_file = models.FileField(upload_to="beats/audio_files/", blank=True, null=True)  # Fichier sélectionné automatiquement
     # Artistes associés
-    main_artist = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="main_beats")  # Artiste principal
+    main_artist = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="beats")  # Artiste principal
     co_artists = models.ManyToManyField(CustomUser, related_name="featured_beats", blank=True)  # Co-artistes
 
     # Système de likes
@@ -35,6 +39,9 @@ class Beat(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)  # Date de création
     updated_at = models.DateTimeField(auto_now=True)  # Dernière mise à jour
+
+    likes = models.ManyToManyField(CustomUser, related_name="liked_beats", blank=True)
+    favorites = models.ManyToManyField(CustomUser, related_name="favorited_beats", blank=True)
 
     @property
     def price(self):
@@ -54,10 +61,46 @@ class Beat(models.Model):
 
         return min_price
 
+    def select_best_audio(self):
+        """
+        Sélectionne le fichier audio optimal parmi les tracks disponibles.
+        Gère aussi les formats inconnus.
+        """
+        preferred_formats = ['.m4a', '.opus', '.mp3', '.ogg', '.wav', '.flac']
+        
+        # Récupérer toutes les pistes associées au Beat
+        tracks = self.tracks.all()
 
+        # Trier les tracks par priorité de format, en mettant les formats inconnus à la fin
+        sorted_tracks = sorted(
+            tracks,
+            key=lambda track: preferred_formats.index(track.file_type) if track.file_type in preferred_formats else len(preferred_formats)
+        )
+
+        # Gérer les formats inconnus
+        for track in tracks:
+            if track.file_type not in preferred_formats:
+                print(f"⚠️ Format inconnu détecté: {track.file_type} pour {track.audio_file}")
+
+        # Sélectionner la meilleure piste disponible
+        if sorted_tracks:
+            best_track = sorted_tracks[0]  # Prend le premier fichier après tri
+            self.audio_file = best_track.audio_file
+            self.duration = best_track.duration  # Mettre à jour la durée du beat
+            self.file_type = best_track.file_type  # Mettre à jour le type de fichier
+            self.main_track = best_track  # Mettre à jour la piste principale
+            self.save()
+
+
+    def save(self, *args, **kwargs):
+        """
+        Surcharge du save pour sélectionner automatiquement l'audio_file avant sauvegarde.
+        """
+        super().save(*args, **kwargs)  # Sauvegarde initiale
+       
 
     def __str__(self):
-        return f"{self.title} - {self.user.username}"
+        return f"{self.title} - {self.main_artist.username}"
 
 
 class BeatTrack(models.Model):
@@ -67,11 +110,22 @@ class BeatTrack(models.Model):
     beat = models.ForeignKey(Beat, on_delete=models.CASCADE, related_name="tracks")
     title = models.CharField(max_length=255, help_text="Titre de la piste (Ex: Version MP3, WAV, Stems...)")
     audio_file = models.FileField(upload_to="beats/audio/")
-    file_type = models.CharField(
-        max_length=50,
-        choices=[("mp3", "MP3"), ("wav", "WAV"), ("stems", "Stems"), ("other", "Autre")],
-        default="mp3"
-    )  # Type de fichier
+    file_type = models.CharField(max_length=10, blank=True, null=True)  # Type de fichier
+    duration = models.FloatField(blank=True, null=True, help_text="Durée de la piste en secondes")
+
+    def save(self, *args, **kwargs):
+        # Remplir automatiquement le type de fichier
+        if self.audio_file:
+            self.file_type = f".{self.audio_file.name.split('.')[-1]}"
+            
+        
+        # Remplir automatiquement la durée de la piste
+        if self.audio_file:
+            audio = File(self.audio_file)
+            self.duration = round(audio.info.length, 2) if audio else 0
+            
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.title} - {self.beat.title}"
@@ -107,4 +161,3 @@ def update_likes_count(sender, instance, action, **kwargs):
         instance.likes_count = instance.likes.count()
         instance.save()
 
-    

@@ -1,8 +1,11 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Beat, License
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from .models import Beat, License,BeatTrack
 
 # ✅ Inline pour gérer les licences directement dans l'admin du Beat
+
 class LicenseInline(admin.TabularInline):  
     model = License
     extra = 1  # Nombre de licences vides affichées par défaut
@@ -25,7 +28,7 @@ class LicenseInline(admin.TabularInline):
 # ✅ Personnalisation de l'affichage du Beat
 @admin.register(Beat)
 class BeatAdmin(admin.ModelAdmin):
-    list_display = ('title', 'main_artist', 'display_co_artists', 'cheapest_license', 'is_public', 'is_sold', 'created_at')
+    list_display = ('title', 'main_artist', 'display_co_artists', 'cheapest_license',"main_track","duration", 'is_public', 'is_sold', 'created_at')
     list_filter = ('is_public', 'is_sold', 'created_at', 'licenses__price')
     search_fields = ('title', 'main_artist__username', 'co_artists__username')
     inlines = [LicenseInline]
@@ -59,3 +62,27 @@ class BeatAdmin(admin.ModelAdmin):
         queryset.update(is_sold=True)
         self.message_user(request, "Les beats sélectionnés ont été marqués comme vendus.")
     mark_as_sold.short_description = "Marquer comme vendu (exclusif)"
+
+
+@admin.register(BeatTrack)
+class BeatTrackAdmin(admin.ModelAdmin):
+    list_display = ("title", "beat", "file_type", "audio_file","duration")
+    list_filter = ("file_type", "beat")
+    search_fields = ("title", "beat__title")
+    ordering = ("beat", "title")
+
+@admin.register(License)
+class LicenseAdmin(admin.ModelAdmin):
+    list_display = ("title", "beat", "price", "is_exclusive", "created_at")
+    list_filter = ("is_exclusive", "beat")
+    search_fields = ("title", "beat__title")
+    ordering = ("-created_at",)
+
+    filter_horizontal = ("tracks",)  # Permet de sélectionner les pistes audio dans un champ multi-sélection
+
+@receiver(post_save, sender=BeatTrack)
+def update_beat_audio(sender, instance, **kwargs):
+    """
+    Appelle la méthode select_best_audio du Beat associé après la sauvegarde d'une BeatTrack.
+    """
+    instance.beat.select_best_audio()
