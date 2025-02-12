@@ -34,12 +34,7 @@ export default function LogIn() {
 
   return (
     <div className="login-page-background">
-      <DefaultForm
-        title="Log In"
-        subText="Don't have an account yet?"
-        handleSubTextClick={() => (window.location.href = "/register")}
-        handleSubmit={handleSubmit}
-      >
+      <DefaultForm title="Log In">
         {error && <p className="error">{error}</p>}
         <input
           type="email"
@@ -57,9 +52,24 @@ export default function LogIn() {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-      </DefaultForm>
 
-      <LoginWithGoogle />
+        <div className="default-form-bottom-section">
+          <LoginWithGoogle />
+          <p
+            className="default-form-bottom-section-text"
+            onClick={() => (window.location.href = "/register")}
+          >
+            Don't have an account yet?
+          </p>
+          <button
+            type="submit"
+            onClick={handleSubmit}
+            className="default-form-bottom-section-sumbit-button"
+          >
+            Envoyer
+          </button>
+        </div>
+      </DefaultForm>
     </div>
   );
 }

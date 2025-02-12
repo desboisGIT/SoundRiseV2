@@ -72,6 +72,7 @@ input:-webkit-autofill:active{
 /*Change text in autofill textbox*/
 input:-webkit-autofill{
   -webkit-text-fill-color: #e0e0e0 !important;
+  background-color: rgb(14, 14, 14);
 }
 
 .flex {

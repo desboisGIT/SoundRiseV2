@@ -9,7 +9,7 @@
     background-color: var(--main-background-color);
     color: rgb(245, 245, 245);
     border: 1px solid #505050bb;
-    transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+    transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1) !important;
     padding: 20px;
     border-radius: 15px;
     width: fit-content !important;
@@ -78,3 +78,10 @@
 .default-form-forms{
     margin-bottom: 10px;
 }
+
+input:-webkit-autofill {
+    /* Force a consistent background so that your animations are not disrupted */
+    -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0) inset !important;
+    transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1) !important;
+  }
+  

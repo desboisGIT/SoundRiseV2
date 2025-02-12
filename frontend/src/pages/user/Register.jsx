@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import DefaultForm from "../../components/forms/defaultForm/DefaultForm";
 import { register } from "../../api/auth";
+import LoginWithGoogle from "../../components/auth/LoginWithGoogle";
 
 export default function Register() {
   const [username, setUsername] = useState("");
@@ -77,6 +78,22 @@ export default function Register() {
             Registration successful! Redirecting...
           </p>
         )}
+        <div className="default-form-bottom-section">
+          <LoginWithGoogle />
+          <p
+            className="default-form-bottom-section-text"
+            onClick={() => (window.location.href = "/register")}
+          >
+            I already have an account?
+          </p>
+          <button
+            type="submit"
+            onClick={handleSubmit}
+            className="default-form-bottom-section-sumbit-button"
+          >
+            Envoyer
+          </button>
+        </div>
       </DefaultForm>
     </div>
   );
