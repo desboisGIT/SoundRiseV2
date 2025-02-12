@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { getUserInfo } from "../../api/user";
 import { logout } from "../../api/auth";
 import { useNavigate } from "react-router-dom";
+import LogOutButton from "../../components/actionsButtons/logOut/LogOutButton";
 
 export default function Account() {
   const [userInfo, setUserInfo] = useState(null);
@@ -50,14 +51,7 @@ export default function Account() {
         Profile Picture: <img src={userInfo.profile_picture} alt="Profile" />
       </p>
       <p>Bio: {userInfo.bio}</p>
-      <button
-        onClick={() => {
-          logout();
-          navigate("/login");
-        }}
-      >
-        🚪 Logout
-      </button>
+      <LogOutButton />
     </div>
   );
 }

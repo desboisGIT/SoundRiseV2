@@ -11,34 +11,32 @@ import LandingPage from "./pages/site/LandingPage";
 import LogIn from "./pages/user/LogIn";
 import Register from "./pages/user/Register";
 import Account from "./pages/user/Account";
-import Notification from "./components/notifications/Notification";
-import { useState, useEffect } from "react";
+import { NotificationProvider } from "./components/NotificationContext";
+import { AuthProvider, useAuth } from "./components/context/AuthContext"; // Import your Auth context
+// (We no longer need to call isLoggedIn() manually here.)
 const clientId = "162639459241-vfs3ogmpn0fb9jhva7fhfc18k1qlqqm0.apps.googleusercontent.com";
 
-const handleLogout = () => {
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
-  axios.defaults.headers.common["Authorization"] = null;
-  console.log("Logged out");
-};
-
-const defaultNotifications = [];
-
 const AppContent = () => {
-  const storedNotifications = JSON.parse(localStorage.getItem("notifications"));
-  const [notifications, setNotifications] = useState(storedNotifications || defaultNotifications);
-
-  useEffect(() => {
-    localStorage.setItem("notifications", JSON.stringify(notifications));
-  }, [notifications]);
-
   const navigate = useNavigate();
+  // Get the global auth state and logout function from the context
+  const { loggedIn, logout } = useAuth();
+
+  // Define your options for the account dropdown
   const accountsOptions = [
     ["Profile", () => navigate("/account")],
     ["Settings", () => console.log("Settings")],
     ["Messages", () => console.log("Messages")],
-    ["Log Out", handleLogout],
+    [
+      "Log Out",
+      () => {
+        logout(); // This updates the auth state immediately.
+        // Optionally, clear axios defaults or navigate to a public route:
+        axios.defaults.headers.common["Authorization"] = null;
+        navigate("/");
+      },
+    ],
   ];
+
   const ExploreOptions = [
     ["Beats", () => console.log("Beats")],
     ["SoundTracks", () => console.log("SoundTracks")],
@@ -62,19 +60,25 @@ const AppContent = () => {
         }
         rightComponents={
           <>
-            <TopBarButtonDropDown title="Accounts" optionList={accountsOptions} position="center" />
-            <TopBarButton title="Log In" action={() => navigate("/login")} />
-            <TopBarButton title="Register" action={() => navigate("/register")} />
+            {loggedIn ? (
+              <TopBarButtonDropDown title="Accounts" optionList={accountsOptions} position="center" />
+            ) : (
+              <>
+                <TopBarButton title="Log In" action={() => navigate("/login")} />
+                <TopBarButton title="Register" action={() => navigate("/register")} />
+              </>
+            )}
           </>
         }
       />
-      <Notification notifications={notifications} setNotifications={setNotifications} />
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LogIn />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/account" element={<Account />} />
-      </Routes>
+      <NotificationProvider>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LogIn />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/account" element={<Account />} />
+        </Routes>
+      </NotificationProvider>
     </>
   );
 };
@@ -82,9 +86,11 @@ const AppContent = () => {
 const App = () => {
   return (
     <GoogleOAuthProvider clientId={clientId}>
-      <Router>
-        <AppContent />
-      </Router>
+      <AuthProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </AuthProvider>
     </GoogleOAuthProvider>
   );
 };
