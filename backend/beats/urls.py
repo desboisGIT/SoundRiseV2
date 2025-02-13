@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from rest_framework.routers import DefaultRouter
-from .views import BeatViewSet, LicenseViewSet, BeatTrackViewSet, BeatCommentViewSet,FinalizeDraftView,DraftBeatListCreateView,DraftBeatDetailView,UserLicenseListView,CreateConditionsView
+from .views import BeatViewSet, LicenseViewSet, BeatTrackViewSet, BeatCommentViewSet,FinalizeDraftView,DraftBeatListCreateView,DraftBeatDetailView,UserLicenseListView,CreateConditionsView,UserTracksView,user_drafts
 router = DefaultRouter()
 router.register(r"beats", BeatViewSet)
 
@@ -35,6 +35,7 @@ urlpatterns = [
         'patch': 'partial_update',
         'delete': 'destroy'
     }), name='track_detail'),
+    path('tracks/user/', UserTracksView.as_view(), name='user_beats'),
 
 
     path('', BeatViewSet.as_view({
@@ -60,7 +61,7 @@ urlpatterns = [
     }), name="comment_detail"),
     
     path('drafts/', DraftBeatListCreateView.as_view(), name='draft-list-create'),
-    
+    path('drafts/user/', user_drafts, name='user_drafts'),
     path('drafts/<int:pk>/', DraftBeatDetailView.as_view(), name='draft-detail'),
     path('draftbeats/<int:pk>/', DraftBeatListCreateView.as_view(), name='add-licenses'),
     path('finalize-draft/<int:draft_id>/', FinalizeDraftView.as_view(), name='finalize-draft'),

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomUser
+from .models import CustomUser,Report
 import urllib.parse
 
 class CustomUserSerializer(serializers.ModelSerializer):
@@ -22,3 +22,12 @@ class ProfilePictureSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = ["profile_picture"]
 
+
+
+class ReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
+        fields = "__all__"
+        read_only_fields = ["reporter"]
+
+        

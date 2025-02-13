@@ -3,14 +3,18 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from .serializers import CustomUserSerializer,ProfilePictureSerializer
-from .models import CustomUser
+from rest_framework.views import APIView
+from rest_framework.generics import ListAPIView
+from rest_framework.permissions import IsAuthenticated,IsAdminUser
+from .serializers import CustomUserSerializer,ProfilePictureSerializer,ReportSerializer
+from .models import CustomUser,Report
+from beats.models import Beat
 from .forms import ProfilePictureForm
 from django.db.models import Q
 from rest_framework import status, generics
 from rest_framework.parsers import MultiPartParser, FormParser
 from urllib.parse import urlparse, unquote
+from django.shortcuts import get_object_or_404
 import urllib.parse
 
 
@@ -189,3 +193,112 @@ class ProfilePictureUpdateView(generics.UpdateAPIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def follow_user(request, user_id):
+    """Permet à l'utilisateur authentifié de s'abonner ou de se désabonner d'un autre utilisateur."""
+    user = request.user  # L'utilisateur qui envoie la requête
+    target_user = get_object_or_404(CustomUser, id=user_id)  # L'utilisateur à suivre
+
+    if user == target_user:
+        return Response({"error": "Vous ne pouvez pas vous abonner à vous-même."}, status=400)
+
+    if target_user in user.following.all():
+        user.following.remove(target_user)  # Désabonnement
+        return Response({"message": f"Vous vous êtes désabonné de {target_user.username}."})
+    else:
+        user.following.add(target_user)  # Abonnement
+        return Response({"message": f"Vous êtes maintenant abonné à {target_user.username}."})
+    
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_followers_and_following(request):
+    """Retourne les abonnés et les abonnements de l'utilisateur connecté."""
+    user = request.user
+    followers = user.followers.all()  # Ceux qui me suivent
+    following = user.following.all()  # Ceux que je suis
+
+    data = {
+        "followers": CustomUserSerializer(followers, many=True).data,
+        "following": CustomUserSerializer(following, many=True).data
+    }
+    return Response(data)
+
+@api_view(['GET'])
+def user_followers_and_following(request, user_id):
+    """Retourne les abonnés et abonnements d'un utilisateur spécifique."""
+    target_user = get_object_or_404(CustomUser, id=user_id)
+    followers = target_user.followers.all()
+    following = target_user.following.all()
+
+    data = {
+        "followers": CustomUserSerializer(followers, many=True).data,
+        "following": CustomUserSerializer(following, many=True).data
+    }
+    return Response(data)
+
+
+class ReportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """
+        Permet aux utilisateurs authentifiés de signaler un beat ou un utilisateur.
+        """
+        user = request.user
+
+        # Vérifie si l'utilisateur est authentifié
+        if not user or not user.is_authenticated:
+            return Response({"error": "Authentification requise."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        data = request.data.copy()
+
+        # Vérification des champs
+        report_type = data.get("report_type")
+        reported_user_id = data.get("reported_user")
+        reported_beat_id = data.get("reported_beat")
+
+        if report_type not in ["user", "beat"]:
+            return Response({"error": "Type de signalement invalide."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if report_type == "user" and not reported_user_id:
+            return Response({"error": "L'ID de l'utilisateur signalé est requis."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if report_type == "beat" and not reported_beat_id:
+            return Response({"error": "L'ID du beat signalé est requis."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if report_type == "user":
+            try:
+                reported_user = CustomUser.objects.get(id=reported_user_id)
+                data["reported_user"] = reported_user.id
+            except CustomUser.DoesNotExist:
+                return Response({"error": "Utilisateur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        if report_type == "beat":
+            try:
+                reported_beat = Beat.objects.get(id=reported_beat_id)
+                data["reported_beat"] = reported_beat.id
+            except Beat.DoesNotExist:
+                return Response({"error": "Beat introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Passe l'utilisateur directement au serializer
+        serializer = ReportSerializer(data=data, context={"request": request})
+
+        if serializer.is_valid():
+            serializer.save(reporter=user)  # Ajoute explicitement le reporter
+            return Response({"message": "Signalement enregistré avec succès."}, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    
+
+class ReportListView(ListAPIView):
+    """
+    Liste les signalements pour les administrateurs.
+    """
+    queryset = Report.objects.all()
+    serializer_class = ReportSerializer
+    permission_classes = [IsAdminUser]

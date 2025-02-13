@@ -7,6 +7,8 @@ from django.core.validators import MinLengthValidator, RegexValidator, EmailVali
 from django.utils.translation import gettext_lazy as _
 import urllib.parse
 
+from django.conf import settings
+
 class CustomUserManager(BaseUserManager):
     """Gestionnaire de création des utilisateurs et superutilisateurs"""
     
@@ -71,7 +73,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     profile_picture = models.ImageField(upload_to="profile_pics/", null=True, blank=True, default="profile_pics/default_profile.png")
 
     bio = models.TextField(blank=True, null=True)
-    followers = models.ManyToManyField("self", symmetrical=False, related_name="following", blank=True)
+    following = models.ManyToManyField("self", symmetrical=False, related_name="followers", blank=True)
+    
 
     objects = CustomUserManager()
 
@@ -99,3 +102,33 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
 
 
+
+class Report(models.Model):
+    REPORT_TYPES = [
+        ("user", "Utilisateur"),
+        ("beat", "Beat"),
+    ]
+
+    REASON_CHOICES = [
+        ("spam", "Spam"),
+        ("harassment", "Harcèlement"),
+        ("inappropriate", "Contenu inapproprié"),
+        ("copyright", "Violation de droits d'auteur"),
+        ("other", "Autre"),
+    ]
+
+    reporter = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="reports_made")  # Qui a signalé
+    report_type = models.CharField(max_length=10, choices=REPORT_TYPES)  # Type de signalement
+    reported_user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, blank=True, related_name="reports_received")  # Utilisateur signalé
+    reported_beat = models.ForeignKey("beats.Beat", on_delete=models.CASCADE, null=True, blank=True, related_name="reports")  # Beat signalé
+    reason = models.CharField(max_length=50, choices=REASON_CHOICES)  # Raison du signalement
+    description = models.TextField(blank=True, null=True)  # Détails supplémentaires
+    created_at = models.DateTimeField(auto_now_add=True)  # Date du signalement
+
+    def __str__(self):
+        if self.report_type == "user":
+            return f"Report User: {self.reported_user} by {self.reporter}"
+        return f"Report Beat: {self.reported_beat} by {self.reporter}"
+
+    class Meta:
+        ordering = ["-created_at"]

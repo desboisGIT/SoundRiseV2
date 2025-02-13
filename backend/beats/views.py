@@ -13,6 +13,7 @@ from rest_framework import viewsets, status
 from django.db import transaction
 import json
 from rest_framework.generics import ListAPIView
+from .permissions import AllowAnyGetAuthenticatedElse
 
 @api_view(['GET'])
 def filter_beats(request):
@@ -126,7 +127,7 @@ class BeatViewSet(viewsets.ModelViewSet):
     """
     queryset = Beat.objects.all()
     serializer_class = BeatActionSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [AllowAnyGetAuthenticatedElse]
 
     def perform_create(self, serializer):
         serializer.save(main_artist=self.request.user)  # Associe le beat à l'utilisateur connecté
@@ -158,8 +159,8 @@ class LicenseViewSet(viewsets.ModelViewSet):
     """
     queryset = License.objects.all()
     serializer_class = LicenseSerializer
-    http_method_names = ["get", "post", "put", "patch", "delete"]  # Vérifie bien que "post" est là !
-    permission_classes = [AllowAny]
+    http_method_names = ["get", "post", "put", "patch", "delete"]  
+    permission_classes = [AllowAnyGetAuthenticatedElse]
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -177,14 +178,38 @@ class UserLicenseListView(ListAPIView):
 class BeatTrackViewSet(viewsets.ModelViewSet):
     queryset = BeatTrack.objects.all()  # ✅ S'assurer que tous les objets sont récupérés
     serializer_class = BeatTrackSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAnyGetAuthenticatedElse]
     
 from django.http import JsonResponse
 
 
+class UserTracksView(APIView):
+    """
+    Vue pour récupérer les beats associés à un utilisateur authentifié.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        # Récupérer l'utilisateur authentifié
+        user = request.user
+        
+        # Récupérer toutes les licenses de l'utilisateur
+        licenses = License.objects.filter(user=user)
+        
+        # Récupérer tous les BeatTracks associés à ces licenses
+        tracks = BeatTrack.objects.filter(licenses__in=licenses)
+        
+        # Sérialiser les BeatTracks
+        serializer = BeatTrackSerializer(tracks, many=True)
+        
+        # Retourner la réponse avec les données sérialisées
+        return Response(serializer.data)
+    
+
 class BeatCommentViewSet(viewsets.ModelViewSet):
     serializer_class = BeatCommentSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [AllowAnyGetAuthenticatedElse]
 
     def get_queryset(self):
         """ Récupère les commentaires d'un beat """
@@ -197,11 +222,10 @@ class BeatCommentViewSet(viewsets.ModelViewSet):
         """ Assigner l'utilisateur connecté au commentaire """
         serializer.save(user=self.request.user)
 
-
 @api_view(['GET'])
 def conditions_by_license(request, license_id):
     """Retourne les conditions associées à une licence spécifique."""
-    conditions = Conditions.objects.filter(license_id=license_id)
+    conditions = Conditions.objects.filter(licenses__id=license_id)  # Utilisation de licenses__id
     serializer = ConditionsSerializer(conditions, many=True)
     return Response(serializer.data)
 
@@ -356,4 +380,20 @@ class CreateConditionsView(generics.CreateAPIView):
 
 
 
+@api_view(['GET'])
+def user_drafts(request):
+    permission_classes = [IsAuthenticated]
+    """Retourne les drafts de l'utilisateur connecté."""
     
+    # Vérifier si l'utilisateur est authentifié
+    if not request.user.is_authenticated:
+        return Response({"detail": "Non authentifié."}, status=401)
+    
+    # Récupérer tous les drafts associés à l'utilisateur connecté
+    drafts = DraftBeat.objects.filter(user=request.user)
+    
+    # Sérialiser les drafts
+    serializer = DraftBeatSerializer(drafts, many=True)
+    
+    # Retourner la réponse avec les données sérialisées
+    return Response(serializer.data)
