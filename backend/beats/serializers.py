@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Beat, License, BeatTrack,BeatComment
+from .models import Beat, License, BeatTrack,BeatComment,Conditions,DraftBeat
 
 class BeatSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(source='user.id', read_only=True)  # Afficher l'ID de l'utilisateur
@@ -36,7 +36,8 @@ class BeatTrackSerializer(serializers.ModelSerializer):
 class LicenseSerializer(serializers.ModelSerializer):
     class Meta:
         model = License
-        fields = ['id', 'title', 'price', 'description', 'beat']
+        fields = ['id', 'title', 'price', 'description', 'is_exclusive', 'created_at' ]
+        read_only_fields = ["user"]
 
 
 class BeatActionSerializer(serializers.ModelSerializer):
@@ -79,3 +80,25 @@ class BeatCommentSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             validated_data["user"] = request.user
         return super().create(validated_data)
+
+
+class ConditionsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Conditions
+        fields = ['id', 'title', 'value', 'is_unlimited', 'description', 'created_at']
+
+    def to_representation(self, instance):
+        """Personnalise la sortie pour afficher 'Illimité' si is_unlimited est True."""
+        data = super().to_representation(instance)
+        if instance.is_unlimited:
+            data['value'] = "Illimité"
+        return data
+    
+
+class DraftBeatSerializer(serializers.ModelSerializer):
+    tracks = BeatTrackSerializer(many=True)
+    licenses = LicenseSerializer(many=True)
+
+    class Meta:
+        model = DraftBeat
+        fields = '__all__'

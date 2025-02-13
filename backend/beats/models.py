@@ -25,6 +25,11 @@ class Beat(models.Model):
     main_artist = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="beats")  # Artiste principal
     co_artists = models.ManyToManyField(CustomUser, related_name="featured_beats", blank=True)  # Co-artistes
 
+    # models liés
+    tracks = models.ManyToManyField('BeatTrack', related_name="beat")
+    licenses = models.ManyToManyField('License', related_name="beat")
+
+
     # Système de likes
     likes = models.ManyToManyField(CustomUser, related_name="liked_beats", blank=True)
     likes_count = models.IntegerField(default=0)
@@ -126,7 +131,6 @@ class BeatTrack(models.Model):
     """
     Modèle pour gérer plusieurs pistes audio associées à un Beat.
     """
-    beat = models.ForeignKey(Beat, on_delete=models.CASCADE, related_name="tracks")
     title = models.CharField(max_length=255, help_text="Titre de la piste (Ex: Version MP3, WAV, Stems...)")
     audio_file = models.FileField(upload_to="beats/audio/")
     file_type = models.CharField(max_length=10, blank=True, null=True)  # Type de fichier
@@ -154,7 +158,7 @@ class License(models.Model):
     """
     Modèle de licence permettant aux utilisateurs de définir leurs propres licences pour un beat.
     """
-    beat = models.ForeignKey(Beat, on_delete=models.CASCADE, related_name="licenses")
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)  # Créateur de la licence
     title = models.CharField(max_length=255)  # Nom de la licence (Ex: Basic Lease, Premium, Exclusive...)
     description = models.TextField(blank=True, null=True)  # Description de la licence
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)  # Prix de la licence
@@ -162,16 +166,92 @@ class License(models.Model):
     # Pistes audio incluses dans cette licence
     tracks = models.ManyToManyField(BeatTrack, related_name="licenses")
 
+    TEMPLATE_CHOICES = [
+        ("CUSTOM", "Custom"),       # Créée à partir du brouillon
+        ("BASIC", "Basic"),         # License basique avec peu de droits
+        ("PREMIUM", "Premium"),     # Version plus chère avec plus de droits
+        ("UNLIMITED", "Unlimited"), # Licence sans restriction de streams
+        ("EXCLUSIVE", "Exclusive"), # License où l'acheteur obtient tous les droits
+        ("RADIO", "Radio"),         # Licence spécialement conçue pour la radio
+        ("TV", "TV"),               # Licence avec autorisation TV et film
+        ("SYNC", "Sync"),           # Licence pour les synchronisations (pub, film)
+    ]
+
+    license_template = models.CharField(
+        max_length=10, choices=TEMPLATE_CHOICES, default="CUSTOM"
+    )
+
     # Fichiers associés à la licence
     license_file = models.FileField(upload_to="licenses/files/", blank=True, null=True)  # Contrat PDF ou document
     terms_text = models.TextField(blank=True, null=True)  # Texte de la licence
+    condition = models.ManyToManyField("Conditions", related_name="licenses", blank=True)
     is_exclusive = models.BooleanField(default=False, help_text="Indique si cette licence est exclusive.")
     
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        """Remplit automatiquement les informations si un template est sélectionné."""
+        if self.license_template != "CUSTOM":
+            templates_data = {
+                "BASIC": {
+                    "title": "Basic License",
+                    "description": "License basique avec utilisation commerciale limitée.",
+                    "terms_text": "Non-exclusive, max 100k streams.",
+                    "is_exclusive": False,
+                },
+                "PREMIUM": {
+                    "title": "Premium License",
+                    "price": 99.99,
+                    "description": "License premium avec droits commerciaux étendus.",
+                    "terms_text": "Non-exclusive, streams illimités, monétisation autorisée.",
+                    "is_exclusive": False,
+                },
+                "UNLIMITED": {
+                    "title": "Unlimited License",
+                    "price": 199.99,
+                    "description": "Streams, ventes et monétisation illimités.",
+                    "terms_text": "Non-exclusive, pas de limite d’utilisation.",
+                    "is_exclusive": False,
+                },
+                "EXCLUSIVE": {
+                    "title": "Exclusive License",
+                    "price": 499.99,
+                    "description": "Vous obtenez tous les droits sur le beat.",
+                    "terms_text": "Exclusive, pas de limite d’utilisation.",
+                    "is_exclusive": True,
+                },
+                "RADIO": {
+                    "title": "Radio License",
+                    "price": 149.99,
+                    "description": "Licence pour diffusion radio avec redevance SACEM.",
+                    "terms_text": "Utilisation radio autorisée, pas de vente directe.",
+                    "is_exclusive": False,
+                },
+                "TV": {
+                    "title": "TV License",
+                    "price": 299.99,
+                    "description": "Licence autorisant l’utilisation pour la télévision et les films.",
+                    "terms_text": "Droits TV et cinéma accordés.",
+                    "is_exclusive": False,
+                },
+                "SYNC": {
+                    "title": "Sync License",
+                    "price": 399.99,
+                    "description": "Utilisation du beat pour des publicités, films et jeux vidéo.",
+                    "terms_text": "Droits de synchronisation pour médias accordés.",
+                    "is_exclusive": False,
+                }
+            }
+            # Appliquer les valeurs du template
+            template_values = templates_data.get(self.license_template, {})
+            for field, value in template_values.items():
+                setattr(self, field, value)
+
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"{self.title} - {self.beat.title} ({'Exclusive' if self.is_exclusive else 'Non-Exclusive'})"
-    
+        return f"{self.title} - {('Exclusive' if self.is_exclusive else 'Non-Exclusive')}"
+
 
 
 @receiver(m2m_changed, sender=Beat.likes.through)
@@ -180,3 +260,42 @@ def update_likes_count(sender, instance, action, **kwargs):
         instance.likes_count = instance.likes.count()
         instance.save()
 
+
+
+
+class DraftBeat(models.Model):
+    """Modèle pour stocker un Beat en brouillon avec plusieurs Licenses et Tracks."""
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)  
+    title = models.CharField(max_length=255, blank=True, null=True)
+    bpm = models.IntegerField(blank=True, null=True)
+    key = models.CharField(max_length=10, blank=True, null=True)
+    genre = models.CharField(max_length=100, blank=True, null=True)
+    cover_image = models.ImageField(upload_to="draft/covers/", blank=True, null=True)  # Image de couverture optionnelle
+    is_public = models.BooleanField(default=True, help_text="Définit si le beat est public ou privé.")  # Visibilité
+    co_artists =models.JSONField(default=list, blank=True, null=True)
+
+    # ✅ Stockage des Licenses et Tracks sous forme de liste JSON
+    licenses = models.JSONField(default=list, blank=True, null=True)  
+    tracks = models.JSONField(default=list, blank=True, null=True)  
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class Conditions(models.Model):
+    """Modèle pour stocker les conditions associéés aux licences."""
+    
+    title = models.CharField(max_length=255)
+    value = models.IntegerField(default=0, null=True, blank=True)
+    is_unlimited = models.BooleanField(default=False)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        """Surcharge de la méthode save pour gérer la valeur illimitée."""
+        if self.is_unlimited:
+            self.value = None  # Remplacer la valeur par None si illimité
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.title

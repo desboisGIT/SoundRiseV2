@@ -1,7 +1,6 @@
 
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
-
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.core.validators import MinLengthValidator, RegexValidator, EmailValidator
@@ -87,6 +86,16 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
             path = obj.profile_picture.url.replace("/media/", "")
             return urllib.parse.unquote(path)  # Décodage ici
         return None
+    
+    def save(self, *args, **kwargs):
+        from .tasks import convert_profile_picture_task
+        is_new_upload = self.pk is None or "profile_picture" in kwargs.get("update_fields", [])
+
+        super().save(*args, **kwargs)  # Sauvegarde l'image originale
+
+        if is_new_upload and self.profile_picture:
+            # Lancer la tâche Celery pour convertir uniquement les uploads
+            convert_profile_picture_task.delay(self.id)
 
 
 

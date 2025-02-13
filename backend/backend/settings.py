@@ -347,3 +347,8 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 #EMAIL_USE_TLS = True
 #EMAIL_HOST_USER = "tonemail@gmail.com"
 #EMAIL_HOST_PASSWORD = "ton_mot_de_passe"
+
+
+CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Assure-toi que Redis tourne sur ce port
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
