@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import Beat, License, BeatTrack
+from .models import Beat, License, BeatTrack,DraftBeat
 
 # ✅ Inline pour gérer les licences directement dans l'admin du Beat
 class LicenseInline(admin.TabularInline):  
@@ -43,13 +43,13 @@ class BeatAdmin(admin.ModelAdmin):
     display_co_artists.short_description = "Co-artistes"
 
     def apply_discount(self, request, queryset):
-        """Action admin pour appliquer une promo de 10% sur plusieurs beats."""
+        """Action admin pour appliquer une promo de 10 pourcent sur plusieurs beats."""
         for beat in queryset:
             for license in beat.licenses.all():
                 license.promo_percentage = 10
                 license.save()
-        self.message_user(request, "Une réduction de 10% a été appliquée aux beats sélectionnés.")
-    apply_discount.short_description = "Appliquer -10% de promo"
+        self.message_user(request, "Une réduction de 10 pourcent a été appliquée aux beats sélectionnés.")
+    apply_discount.short_description = "Appliquer -10 pourcent de promo"
 
     def mark_as_sold(self, request, queryset):
         """Action admin pour marquer des beats comme vendus (exclusifs)."""
@@ -97,3 +97,35 @@ def update_beat_audio(sender, instance, **kwargs):
     Appelle la méthode select_best_audio du Beat associé après la sauvegarde d'un Beat.
     """
     instance.select_best_audio()
+
+
+class DraftBeatAdmin(admin.ModelAdmin):
+    list_display = ('title', 'user', 'bpm', 'key', 'genre', 'is_public', 'created_at', 'updated_at',"audio_file")
+    list_filter = ('is_public', 'created_at', 'updated_at', 'user')
+    search_fields = ('title', 'user__username', 'genre', 'bpm')
+    filter_horizontal = ('licenses', 'tracks', 'co_artists')
+    readonly_fields = ('created_at', 'updated_at')
+
+    # Pour afficher l'image de couverture dans l'admin
+    def cover_image_preview(self, obj):
+        if obj.cover_image:
+            return format_html('<img src="{url}" width="100" />', url=obj.cover_image.url)
+        return "No image"
+    cover_image_preview.short_description = 'Cover Image'
+
+    # Permet d'afficher l'image de couverture dans la liste
+    list_display = ('title', 'user', 'bpm', 'key', 'cover_image_preview',"audio_file", 'is_public', 'created_at', 'updated_at')
+
+    # Personnaliser le formulaire d'édition si nécessaire
+    fieldsets = (
+        (None, {
+            'fields': ('title', 'user', 'bpm', 'key', 'genre', 'cover_image',"audio_file", 'is_public', 'co_artists', 'licenses', 'tracks')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
+
+# Enregistrer le modèle et l'admin
+admin.site.register(DraftBeat, DraftBeatAdmin)

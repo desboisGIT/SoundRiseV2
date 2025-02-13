@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from rest_framework.routers import DefaultRouter
-from .views import BeatViewSet, LicenseViewSet, BeatTrackViewSet, BeatCommentViewSet,FinalizeDraftView,DraftBeatListCreateView,DraftBeatDetailView,CheckDraftCompletenessView,UserLicenseListView
+from .views import BeatViewSet, LicenseViewSet, BeatTrackViewSet, BeatCommentViewSet,FinalizeDraftView,DraftBeatListCreateView,DraftBeatDetailView,UserLicenseListView,CreateConditionsView
 router = DefaultRouter()
 router.register(r"beats", BeatViewSet)
 
@@ -60,10 +60,12 @@ urlpatterns = [
     }), name="comment_detail"),
     
     path('drafts/', DraftBeatListCreateView.as_view(), name='draft-list-create'),
+    
     path('drafts/<int:pk>/', DraftBeatDetailView.as_view(), name='draft-detail'),
-    path('drafts/<int:draft_id>/check-completeness/', CheckDraftCompletenessView.as_view(), name='check-draft-completeness'),
+    path('draftbeats/<int:pk>/', DraftBeatListCreateView.as_view(), name='add-licenses'),
     path('finalize-draft/<int:draft_id>/', FinalizeDraftView.as_view(), name='finalize-draft'),
 
     path('conditions/<int:license_id>/', views.conditions_by_license, name='conditions-by-license'),
+    path('conditions/', CreateConditionsView.as_view(), name='create_conditions'),
 ]
 

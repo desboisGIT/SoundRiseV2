@@ -198,184 +198,6 @@ class BeatCommentViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 
-
-
-
-
-class CheckDraftCompletenessView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, draft_id):
-        """Vérifie si un brouillon est complet avant finalisation."""
-        try:
-            draft = DraftBeat.objects.get(id=draft_id, user=request.user)
-        except DraftBeat.DoesNotExist:
-            return Response({"error": "Brouillon non trouvé"}, status=status.HTTP_404_NOT_FOUND)
-
-        missing_fields = []
-
-        # Vérification des champs obligatoires
-        required_fields = ["title", "bpm", "key", "cover_image", "genre"]
-        for field in required_fields:
-            if not getattr(draft, field, None):
-                missing_fields.append(field)
-
-        # Vérification des tracks
-        if not isinstance(draft.tracks, list) or len(draft.tracks) == 0:
-            missing_fields.append("tracks (au moins un est requis)")
-        else:
-            for i, track in enumerate(draft.tracks, start=1):
-                if not isinstance(track, dict):
-                    missing_fields.append(f"track {i} : format invalide")
-                else:
-                    if "title" not in track or not track["title"]:
-                        missing_fields.append(f"track {i} : 'title' manquant")
-                    if "audio_file" not in track or not track["audio_file"]:
-                        missing_fields.append(f"track {i} : 'audio_file' manquant")
-
-        # Vérification des licenses
-        if not isinstance(draft.licenses, list) or len(draft.licenses) == 0:
-            missing_fields.append("licenses (au moins une est requise)")
-        else:
-            for i, license in enumerate(draft.licenses, start=1):
-                if not isinstance(license, dict):
-                    missing_fields.append(f"license {i} : format invalide")
-                else:
-                    if "title" not in license or not license["title"]:
-                        missing_fields.append(f"license {i} : 'title' manquant")
-                    if "price" not in license or not isinstance(license["price"], (int, float)):
-                        missing_fields.append(f"license {i} : 'price' manquant ou invalide")
-
-                    # Vérification des conditions dans chaque license
-                    if "conditions" not in license or not isinstance(license["conditions"], list) or len(license["conditions"]) == 0:
-                        missing_fields.append(f"license {i} : 'conditions' (au moins une est requise)")
-                    else:
-                        for j, condition in enumerate(license["conditions"], start=1):
-                            if not isinstance(condition, dict):
-                                missing_fields.append(f"license {i}, condition {j} : format invalide")
-                            else:
-                                if "title" not in condition or not condition["title"]:
-                                    missing_fields.append(f"license {i}, condition {j} : 'title' manquant")
-                                if "value" not in condition:
-                                    missing_fields.append(f"license {i}, condition {j} : 'value' manquant")
-                                if "description" not in condition or not condition["description"]:
-                                    missing_fields.append(f"license {i}, condition {j} : 'description' manquant")
-
-        # Si tout est complet
-        if not missing_fields:
-            return Response({"message": "Le brouillon est complet et prêt à être finalisé."}, status=status.HTTP_200_OK)
-
-        # Retourner la liste des champs manquants
-        return Response({"missing_fields": missing_fields}, status=status.HTTP_400_BAD_REQUEST)
-
-
-
-
-
-class FinalizeDraftView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, draft_id):
-        """Convertir un brouillon en Beat, Conditions, Licenses et Tracks."""
-        errors = {}
-
-        try:
-            draft = DraftBeat.objects.get(id=draft_id, user=request.user)
-        except DraftBeat.DoesNotExist:
-            return Response({"error": "Brouillon non trouvé"}, status=status.HTTP_404_NOT_FOUND)
-
-        # Extraction des données
-        tracks_data = draft.tracks
-        licenses_data = draft.licenses
-        conditions_data = draft.conditions
-        beat_data = {
-            "title": draft.title,
-            "bpm": draft.bpm,
-            "key": draft.key,
-            "main_artist": request.user,
-            "co_artists": draft.co_artists,
-            "cover_image": draft.cover_image,
-            "genre": draft.genre,
-            "is_public": draft.is_public,
-        }
-
-        try:
-            with transaction.atomic():
-                # 1️⃣ Création des Tracks
-                created_tracks = []
-                tracks_errors = []
-                for track_data in tracks_data:
-                    track_serializer = BeatTrackSerializer(data=track_data)
-                    if track_serializer.is_valid():
-                        track = track_serializer.save()
-                        created_tracks.append(track)
-                    else:
-                        tracks_errors.append(track_serializer.errors)
-                
-                if tracks_errors:
-                    errors["tracks"] = tracks_errors
-
-                # 2️⃣ Création des Conditions
-                created_conditions = []
-                conditions_errors = []
-                for condition_data in conditions_data:
-                    condition_serializer = ConditionsSerializer(data=condition_data)
-                    if condition_serializer.is_valid():
-                        condition = condition_serializer.save()
-                        created_conditions.append(condition)
-                    else:
-                        conditions_errors.append(condition_serializer.errors)
-                
-                if conditions_errors:
-                    errors["conditions"] = conditions_errors
-
-                # 3️⃣ Création des Licenses
-                created_licenses = []
-                licenses_errors = []
-                for license_data in licenses_data:
-                    track_ids = license_data.pop("tracks", [])
-                    conditions_ids = license_data.pop("conditions", [])
-
-                    license_serializer = LicenseSerializer(data=license_data)
-                    if license_serializer.is_valid():
-                        license_obj = license_serializer.save()
-
-                        # Associer les Tracks à la License
-                        linked_tracks = BeatTrack.objects.filter(id__in=track_ids)
-                        license_obj.tracks.set(linked_tracks)
-
-                        # Associer les Conditions à la License
-                        linked_conditions = Conditions.objects.filter(id__in=conditions_ids)
-                        license_obj.conditions.set(linked_conditions)
-
-                        created_licenses.append(license_obj)
-                    else:
-                        licenses_errors.append(license_serializer.errors)
-                
-                if licenses_errors:
-                    errors["licenses"] = licenses_errors
-
-                # 🎵 4️⃣ Création du Beat
-                beat_serializer = BeatActionSerializer(data=beat_data)
-                if beat_serializer.is_valid():
-                    beat = beat_serializer.save()
-                    beat.licenses.set(created_licenses)
-                else:
-                    errors["beat"] = beat_serializer.errors
-
-                # 🔥 Vérifier si des erreurs existent
-                if errors:
-                    return Response({"errors": errors}, status=status.HTTP_400_BAD_REQUEST)
-
-                # Supprimer le brouillon
-                draft.delete()
-
-                return Response(BeatActionSerializer(beat).data, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            return Response({"error": f"Une erreur inattendue s'est produite: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-
 @api_view(['GET'])
 def conditions_by_license(request, license_id):
     """Retourne les conditions associées à une licence spécifique."""
@@ -390,6 +212,60 @@ class DraftBeatListCreateView(generics.ListCreateAPIView):
     serializer_class = DraftBeatSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def patch(self, request, pk=None):
+        try:
+            # Récupérer l'objet DraftBeat
+            draft_beat = DraftBeat.objects.get(pk=pk)
+
+            # Récupérer les données envoyées dans la requête
+            title = request.data.get('title', draft_beat.title)
+            bpm = request.data.get('bpm', draft_beat.bpm)
+            key = request.data.get('key', draft_beat.key)
+            genre = request.data.get('genre', draft_beat.genre)
+            cover_image = request.data.get('cover_image', draft_beat.cover_image)
+            is_public = request.data.get('is_public', draft_beat.is_public)
+            co_artists_ids = request.data.get('co_artists', [])
+
+            # Récupérer les IDs des licenses et tracks
+            license_ids = request.data.get('license_ids', [])
+            track_ids = request.data.get('track_ids', [])
+
+            # Mettre à jour les champs non-relations
+            draft_beat.title = title
+            draft_beat.bpm = bpm
+            draft_beat.key = key
+            draft_beat.genre = genre
+            draft_beat.cover_image = cover_image
+            draft_beat.is_public = is_public
+
+            # Ajouter les co-artists (ManyToMany relation)
+            if co_artists_ids:
+                co_artists = CustomUser.objects.filter(id__in=co_artists_ids)  # On suppose que co_artists est une relation avec User
+                draft_beat.co_artists.add(*co_artists)
+
+            # Ajouter les licenses au DraftBeat (ManyToMany)
+            if license_ids:
+                licenses = License.objects.filter(id__in=license_ids)
+                draft_beat.licenses.add(*licenses)
+
+            # Ajouter les tracks au DraftBeat (ManyToMany)
+            if track_ids:
+                tracks = BeatTrack.objects.filter(id__in=track_ids)
+                draft_beat.tracks.add(*tracks)
+
+            # Sauvegarder les modifications
+            draft_beat.save()
+
+            return Response({"status": "DraftBeat updated successfully"}, status=status.HTTP_200_OK)
+
+        except DraftBeat.DoesNotExist:
+            return Response({"error": "DraftBeat not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        
+   
+            
+    
+   
     def get_queryset(self):
         """Récupérer uniquement les drafts de l'utilisateur connecté."""
         return DraftBeat.objects.filter(user=self.request.user)
@@ -397,6 +273,7 @@ class DraftBeatListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         """Créer un draft en liant l'utilisateur."""
         serializer.save(user=self.request.user)
+
 
 
 class DraftBeatDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -413,3 +290,70 @@ class DraftBeatDetailView(generics.RetrieveUpdateDestroyAPIView):
         instance = self.get_object()
         instance.delete()
         return Response({"message": "Draft supprimé avec succès."}, status=status.HTTP_204_NO_CONTENT)
+    
+
+
+
+
+
+
+
+class FinalizeDraftView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, draft_id):
+        """Convertir un brouillon en Beat avec Tracks et Licenses."""
+        try:
+            draft = DraftBeat.objects.get(id=draft_id, user=request.user)
+        except DraftBeat.DoesNotExist:
+            return Response({"error": "Brouillon non trouvé"}, status=status.HTTP_404_NOT_FOUND)
+
+        licenses_data = draft.licenses.all() # Licenses envoyées dans la requête
+        co_artists_data = draft.co_artists.all()  # Co-artistes envoyés dans la requête
+        tracks_data = draft.tracks.all()  # Récupérer tous les tracks associés au brouillon
+        user = request.user
+        with transaction.atomic():
+            
+            # 1️⃣ **Création du Beat**
+            beat_data = {
+                "title": draft.title,
+                "bpm": draft.bpm,
+                "key": draft.key,
+                "main_artist": user.id,
+                "cover_image": draft.cover_image,
+                "genre": draft.genre,
+                "is_public": draft.is_public,
+            }
+
+            # Passer le contexte 'request' au sérialiseur
+            beat_serializer = BeatActionSerializer(data=beat_data, context={'request': request})  # Passer le 'request' ici
+            if not beat_serializer.is_valid():
+                return Response({"errors": beat_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            beat = beat_serializer.save()
+
+            # 2️⃣ **Association des Licenses**
+            beat.licenses.set(licenses_data)  # Associer les licenses au Beat
+
+            # 3️⃣ **Association des Co-artistes**
+            beat.co_artists.set(co_artists_data)  # Associer les co-artistes au Beat
+
+            # 4️⃣ **Association des Tracks**
+            beat.tracks.set(tracks_data)  # Associer directement les tracks au Beat
+
+            # ✅ Suppression du brouillon
+            draft.delete()
+
+            # Retourner les données du Beat créé
+            return Response(BeatActionSerializer(beat, context={'request': request}).data, status=status.HTTP_201_CREATED)  # Passer le 'request' ici aussi
+
+        return Response({"error": "Une erreur inconnue s'est produite."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+class CreateConditionsView(generics.CreateAPIView):
+    queryset = Conditions.objects.all()
+    serializer_class = ConditionsSerializer
+
+
+
+
+    

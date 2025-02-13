@@ -94,15 +94,26 @@ class Beat(models.Model):
             self.duration = best_track.duration  # Mettre à jour la durée du beat
             self.file_type = best_track.file_type  # Mettre à jour le type de fichier
             self.main_track = best_track  # Mettre à jour la piste principale
-            self.save()
+            
 
 
     def save(self, *args, **kwargs):
         """
         Surcharge du save pour sélectionner automatiquement l'audio_file avant sauvegarde.
+        Appel de select_best_audio si tracks a été modifié.
         """
+        # Éviter l'appel en boucle en vérifiant que select_best_audio() n'est pas déjà appelé
+        if not hasattr(self, '_selecting_best_audio'):
+            self._selecting_best_audio = True
+            # Vérifier si les tracks ont été modifiés
+            if self.tracks.count() > 0:
+                self.select_best_audio()
+        if self.duration : 
+            self.duration = round(self.duration, 2)
+
         super().save(*args, **kwargs)  # Sauvegarde initiale
-       
+        delattr(self, '_selecting_best_audio')  # Supprimer l'indicateur après sauvegarde
+
 
     def __str__(self):
         return f"{self.title} - {self.main_artist.username}"
@@ -131,8 +142,9 @@ class BeatTrack(models.Model):
     """
     Modèle pour gérer plusieurs pistes audio associées à un Beat.
     """
+    
     title = models.CharField(max_length=255, help_text="Titre de la piste (Ex: Version MP3, WAV, Stems...)")
-    audio_file = models.FileField(upload_to="beats/audio/")
+    audio_file = models.FileField(upload_to="beats/audio-track/")
     file_type = models.CharField(max_length=10, blank=True, null=True)  # Type de fichier
     duration = models.FloatField(blank=True, null=True, help_text="Durée de la piste en secondes")
 
@@ -144,14 +156,25 @@ class BeatTrack(models.Model):
         
         # Remplir automatiquement la durée de la piste
         if self.audio_file:
+            # Utilisation de pydub pour obtenir la durée de la piste
             audio = File(self.audio_file)
-            self.duration = round(audio.info.length, 2) if audio else 0
+            duration = audio.info.length if audio else 0
+            
+            # Arrondir la durée à deux décimales
+            self.duration = round(duration, 2)
             
 
         super().save(*args, **kwargs)
+    
+    @staticmethod
+    def get_file_by_type(beat, file_type):
+        """
+        Retourne le fichier d'un Beat selon le type demandé (.mp3, .wav, .zip, etc.).
+        """
+        return BeatTrack.objects.filter(beat=beat, file_type=file_type).first()
 
     def __str__(self):
-        return f"{self.title} - {self.beat.title}"
+        return f"{self.title} "
 
 
 class License(models.Model):
@@ -271,12 +294,14 @@ class DraftBeat(models.Model):
     key = models.CharField(max_length=10, blank=True, null=True)
     genre = models.CharField(max_length=100, blank=True, null=True)
     cover_image = models.ImageField(upload_to="draft/covers/", blank=True, null=True)  # Image de couverture optionnelle
+    audio_file = models.FileField(upload_to="draft/audio_files/", blank=True, null=True)  # Fichier sélectionné automatiquement
     is_public = models.BooleanField(default=True, help_text="Définit si le beat est public ou privé.")  # Visibilité
-    co_artists =models.JSONField(default=list, blank=True, null=True)
 
-    # ✅ Stockage des Licenses et Tracks sous forme de liste JSON
-    licenses = models.JSONField(default=list, blank=True, null=True)  
-    tracks = models.JSONField(default=list, blank=True, null=True)  
+    co_artists =models.ManyToManyField(CustomUser, related_name="featured_draft_beats", blank=True)  # Co-artistes
+
+    # ✅ Stockage des Licenses et Tracks sous forme de liste JSON 
+    licenses = models.ManyToManyField(License, blank=True)
+    tracks = models.ManyToManyField(BeatTrack)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

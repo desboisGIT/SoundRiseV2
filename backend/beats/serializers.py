@@ -36,7 +36,7 @@ class BeatTrackSerializer(serializers.ModelSerializer):
 class LicenseSerializer(serializers.ModelSerializer):
     class Meta:
         model = License
-        fields = ['id', 'title', 'price', 'description', 'is_exclusive', 'created_at' ]
+        fields = ['id', 'title', 'price', 'description', 'is_exclusive', 'created_at' ,"condition"]
         read_only_fields = ["user"]
 
 
@@ -50,8 +50,17 @@ class BeatActionSerializer(serializers.ModelSerializer):
         model = Beat
         fields = "__all__"
         extra_kwargs = {
-            'main_artist': {'required': False}  # Désactive l'obligation d'envoyer main_artist
+            'main_artist': {'required': False},
+            'audio_file': {'required': False, 'read_only': True},  # Assurez-vous que 'audio_file' n'est pas requis
+            'audio_file': {'required': False, 'read_only': True},
         }
+
+    def validate_title(self, value):
+        """ Validation conditionnelle du champ title. """
+        if not value:
+            raise serializers.ValidationError("Le titre ne peut pas être vide.")
+        return value
+
     def create(self, validated_data):
         request = self.context['request']
         validated_data['main_artist'] = request.user  # Associe l'utilisateur connecté
@@ -64,6 +73,8 @@ class BeatActionSerializer(serializers.ModelSerializer):
     def get_is_favorited(self, obj):
         user = self.context["request"].user
         return user.is_authenticated and obj.favorites.filter(id=user.id).exists()
+
+    
     
 
 class BeatCommentSerializer(serializers.ModelSerializer):
@@ -96,9 +107,15 @@ class ConditionsSerializer(serializers.ModelSerializer):
     
 
 class DraftBeatSerializer(serializers.ModelSerializer):
-    tracks = BeatTrackSerializer(many=True)
-    licenses = LicenseSerializer(many=True)
+    tracks = serializers.PrimaryKeyRelatedField(queryset=BeatTrack.objects.all(), many=True)
+    licenses = serializers.PrimaryKeyRelatedField(queryset=License.objects.all(), many=True)
 
     class Meta:
         model = DraftBeat
         fields = '__all__'
+
+
+class ConditionsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Conditions
+        fields = ['id', 'title', 'value', 'is_unlimited', 'description', 'created_at']
