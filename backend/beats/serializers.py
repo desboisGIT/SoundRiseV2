@@ -36,7 +36,7 @@ class BeatTrackSerializer(serializers.ModelSerializer):
 class LicenseSerializer(serializers.ModelSerializer):
     class Meta:
         model = License
-        fields = ['id', 'title', 'price', 'description', 'is_exclusive', 'created_at' ,"condition"]
+        fields = ['id', 'title', 'price', 'description', 'is_exclusive', 'created_at' ,"condition","license_template","license_file","terms_text","tracks"]
         read_only_fields = ["user"]
 
 

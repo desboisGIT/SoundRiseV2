@@ -90,8 +90,20 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'django_filters',
     'django_extensions',
+    "channels",
+    "messaging",
 ]
 ROOT_URLCONF = "backend.urls"
+
+ASGI_APPLICATION = "backend.asgi.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],  # Adresse de Redis
+        },
+    },
+}
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',

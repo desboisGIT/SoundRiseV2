@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomUser,Report
+from .models import CustomUser,Report,Notifications
 import urllib.parse
 
 class CustomUserSerializer(serializers.ModelSerializer):
@@ -30,4 +30,8 @@ class ReportSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["reporter"]
 
-        
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notifications
+        fields = ['id', 'user', 'message', 'is_read', 'created_at']
+        read_only_fields = ['created_at']

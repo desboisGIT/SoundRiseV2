@@ -6,8 +6,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated,IsAdminUser
-from .serializers import CustomUserSerializer,ProfilePictureSerializer,ReportSerializer
-from .models import CustomUser,Report
+from .serializers import CustomUserSerializer,ProfilePictureSerializer,ReportSerializer,NotificationSerializer
+from .models import CustomUser,Report,Notifications
 from beats.models import Beat
 from .forms import ProfilePictureForm
 from django.db.models import Q
@@ -302,3 +302,36 @@ class ReportListView(ListAPIView):
     queryset = Report.objects.all()
     serializer_class = ReportSerializer
     permission_classes = [IsAdminUser]
+
+
+class UserNotificationsView(generics.ListAPIView):
+    """
+    Vue pour récupérer les notifications de l'utilisateur connecté.
+    """
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Notifications.objects.filter(user=self.request.user)
+
+class AddNotificationView(APIView):
+    """
+    Vue pour ajouter une notification à un utilisateur.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user_id = request.data.get('user')
+        message = request.data.get('message')
+
+        if not user_id or not message:
+            return Response({"error": "user_id et message sont requis."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = CustomUser.objects.get(id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "Utilisateur non trouvé."}, status=status.HTTP_404_NOT_FOUND)
+
+        notification = Notifications.objects.create(user=user, message=message)
+        serializer = NotificationSerializer(notification)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

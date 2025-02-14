@@ -1,6 +1,6 @@
 from django.urls import path, include
 from . import views 
-from .views import update_profile_picture,ProfilePictureUpdateView,follow_user,my_followers_and_following,user_followers_and_following,ReportView,ReportListView
+from .views import update_profile_picture,ProfilePictureUpdateView,follow_user,my_followers_and_following,user_followers_and_following,ReportView,ReportListView,UserNotificationsView,AddNotificationView
 
 urlpatterns = [
     path('oauth/', include('oauth2_provider.urls', namespace='oauth2_provider')),
@@ -14,4 +14,6 @@ urlpatterns = [
     path('user/<int:user_id>/follows/', user_followers_and_following, name='user_followers_and_following'),
     path("user/report/", ReportView.as_view(), name="report"),
     path("user/admin/reports/", ReportListView.as_view(), name="admin-reports"),
+    path('user/notifications/', UserNotificationsView.as_view(), name='user-notifications'),
+    path('user/notifications/add/', AddNotificationView.as_view(), name='add-notification'),
 ]
