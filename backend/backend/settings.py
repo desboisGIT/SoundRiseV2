@@ -46,7 +46,12 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
     "x-csrftoken",  # Required for CSRF handling
+    'content-type',
+    'authorization',
+    'sec-websocket-origin',  # Ajout de cet en-tête pour WebSocket
 ]
+
+
 CORS_ALLOW_METHODS = [
     "GET",
     "POST",
@@ -58,6 +63,10 @@ CORS_ALLOW_METHODS = [
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
+    'https://127.0.0.1:8000',
+    'https://localhost:8000'
 ]
 
 # Application definition
@@ -69,6 +78,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    "daphne",
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
@@ -90,9 +100,11 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'django_filters',
     'django_extensions',
-    "channels",
+    "channels", 
     "messaging",
     "multiselectfield",
+    "websockets",
+    
 ]
 ROOT_URLCONF = "backend.urls"
 
@@ -118,7 +130,6 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     "axes.middleware.AxesMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    'django.middleware.csrf.CsrfViewMiddleware',
     'allauth.account.middleware.AccountMiddleware',  
     
    
@@ -142,7 +153,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'backend.wsgi.application'
+WSGI_APPLICATION = "backend.wsgi.application"
 
 
 # Database
@@ -252,23 +263,28 @@ SESSION_COOKIE_AGE = 3600  # Déconnecte après 1h d'inactivité
 #CSP_IMG_SRC = ("'self'", "data:")
 
 LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "handlers": {
-        "file": {
-            "level": "WARNING",
-            "class": "logging.FileHandler",
-            "filename": "security.log",
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
         },
     },
-    "loggers": {
-        "django.security": {
-            "handlers": ["file"],
-            "level": "WARNING",
-            "propagate": True,
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'messaging': {  # Remplace "myapp" par le nom de ton application pour les logs spécifiques
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
         },
     },
 }
+
 
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.PBKDF2PasswordHasher",
