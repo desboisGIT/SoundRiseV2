@@ -262,28 +262,6 @@ SESSION_COOKIE_AGE = 3600  # Déconnecte après 1h d'inactivité
 #CSP_STYLE_SRC = ("'self'", "https://soundrise.fr")
 #CSP_IMG_SRC = ("'self'", "data:")
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': True,
-        },
-        'messaging': {  # Remplace "myapp" par le nom de ton application pour les logs spécifiques
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': True,
-        },
-    },
-}
 
 
 PASSWORD_HASHERS = [
