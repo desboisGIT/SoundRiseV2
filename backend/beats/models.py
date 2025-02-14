@@ -195,7 +195,7 @@ class License(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)  # Prix de la licence
 
     # Pistes audio incluses dans cette licence
-    tracks = models.ManyToManyField(BeatTrack, related_name="licenses")
+    tracks = models.ManyToManyField(BeatTrack, related_name="licenses",null=True, blank=True)
 
     TEMPLATE_CHOICES = [
         ("CUSTOM", "Custom"),       # Créée à partir du brouillon
