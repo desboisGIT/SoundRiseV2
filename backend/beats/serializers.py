@@ -34,10 +34,24 @@ class BeatTrackSerializer(serializers.ModelSerializer):
 
 
 class LicenseSerializer(serializers.ModelSerializer):
+    license_file_types = serializers.ListField(child=serializers.CharField())
     class Meta:
         model = License
-        fields = ['id', 'title', 'price', 'description', 'is_exclusive', 'created_at' ,"condition","license_template","license_file","terms_text","tracks"]
+        fields = ['id', 'title', 'price', 'description', 'is_exclusive', 'created_at' ,"condition","license_template","license_file_types","terms_text","tracks"]
         read_only_fields = ["user"]
+    
+    def to_representation(self, instance):
+        """Convertit la chaîne en liste lors de la lecture de l'API."""
+        data = super().to_representation(instance)
+        if isinstance(instance.license_file_types, str):
+            data["license_file_types"] = instance.license_file_types.split(",")
+        return data
+
+    def validate_license_file_types(self, value):
+        """Convertit la liste en chaîne avant de l'enregistrer."""
+        if isinstance(value, list):
+            return ",".join(value)
+        return value
 
 
 class BeatActionSerializer(serializers.ModelSerializer):

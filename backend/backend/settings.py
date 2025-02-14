@@ -92,6 +92,7 @@ INSTALLED_APPS = [
     'django_extensions',
     "channels",
     "messaging",
+    "multiselectfield",
 ]
 ROOT_URLCONF = "backend.urls"
 

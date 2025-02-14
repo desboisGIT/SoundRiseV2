@@ -4,6 +4,7 @@ from django.db.models.signals import m2m_changed
 from django.dispatch import receiver
 from django.utils.timezone import now
 from mutagen import File
+from multiselectfield.db.fields import MultiSelectField
 
 
 
@@ -181,6 +182,13 @@ class License(models.Model):
     """
     Modèle de licence permettant aux utilisateurs de définir leurs propres licences pour un beat.
     """
+    FILE_CHOICES = [
+        ("mp3", "MP3"),
+        ("wav", "WAV"),
+        ("flac", "FLAC"),
+        ("stems", "STEMS"),
+        ("zip", "ZIP"),
+    ]
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)  # Créateur de la licence
     title = models.CharField(max_length=255)  # Nom de la licence (Ex: Basic Lease, Premium, Exclusive...)
     description = models.TextField(blank=True, null=True)  # Description de la licence
@@ -205,7 +213,7 @@ class License(models.Model):
     )
 
     # Fichiers associés à la licence
-    license_file = models.FileField(upload_to="licenses/files/", blank=True, null=True)  # Contrat PDF ou document
+    license_file_types = MultiSelectField(choices=FILE_CHOICES, blank=True, null=True)
     terms_text = models.TextField(blank=True, null=True)  # Texte de la licence
     condition = models.ManyToManyField("Conditions", related_name="licenses", blank=True)
     is_exclusive = models.BooleanField(default=False, help_text="Indique si cette licence est exclusive.")
@@ -220,6 +228,7 @@ class License(models.Model):
                     "title": "Basic License",
                     "description": "License basique avec utilisation commerciale limitée.",
                     "terms_text": "Non-exclusive, max 100k streams.",
+                    "license_file_type": "mp3",
                     "is_exclusive": False,
                 },
                 "PREMIUM": {
