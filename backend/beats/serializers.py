@@ -37,7 +37,7 @@ class LicenseSerializer(serializers.ModelSerializer):
     license_file_types = serializers.ListField(child=serializers.CharField())
     class Meta:
         model = License
-        fields = ['id', 'title', 'price', 'description', 'is_exclusive', 'created_at' ,"condition","license_template","license_file_types","terms_text","tracks"]
+        fields = ['id', 'title', 'price', 'description', 'is_exclusive', 'created_at' ,"conditions","license_template","license_file_types","terms_text","tracks"]
         read_only_fields = ["user"]
     
     def to_representation(self, instance):

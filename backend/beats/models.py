@@ -215,7 +215,8 @@ class License(models.Model):
     # Fichiers associés à la licence
     license_file_types = MultiSelectField(choices=FILE_CHOICES, blank=True, null=True)
     terms_text = models.TextField(blank=True, null=True)  # Texte de la licence
-    condition = models.ManyToManyField("Conditions", related_name="licenses", blank=True)
+    conditions = models.JSONField(default=list, blank=True)  # Liste 2D sous forme JSON
+
     is_exclusive = models.BooleanField(default=False, help_text="Indique si cette licence est exclusive.")
     
     created_at = models.DateTimeField(auto_now_add=True)
@@ -224,56 +225,62 @@ class License(models.Model):
         """Remplit automatiquement les informations si un template est sélectionné."""
         if self.license_template != "CUSTOM":
             templates_data = {
-                "BASIC": {
-                    "title": "Basic License",
-                    "description": "License basique avec utilisation commerciale limitée.",
-                    "terms_text": "Non-exclusive, max 100k streams.",
-                    "license_file_type": "mp3",
-                    "is_exclusive": False,
-                },
-                "PREMIUM": {
-                    "title": "Premium License",
-                    "price": 99.99,
-                    "description": "License premium avec droits commerciaux étendus.",
-                    "terms_text": "Non-exclusive, streams illimités, monétisation autorisée.",
-                    "is_exclusive": False,
-                },
-                "UNLIMITED": {
-                    "title": "Unlimited License",
-                    "price": 199.99,
-                    "description": "Streams, ventes et monétisation illimités.",
-                    "terms_text": "Non-exclusive, pas de limite d’utilisation.",
-                    "is_exclusive": False,
-                },
-                "EXCLUSIVE": {
-                    "title": "Exclusive License",
-                    "price": 499.99,
-                    "description": "Vous obtenez tous les droits sur le beat.",
-                    "terms_text": "Exclusive, pas de limite d’utilisation.",
-                    "is_exclusive": True,
-                },
-                "RADIO": {
-                    "title": "Radio License",
-                    "price": 149.99,
-                    "description": "Licence pour diffusion radio avec redevance SACEM.",
-                    "terms_text": "Utilisation radio autorisée, pas de vente directe.",
-                    "is_exclusive": False,
-                },
-                "TV": {
-                    "title": "TV License",
-                    "price": 299.99,
-                    "description": "Licence autorisant l’utilisation pour la télévision et les films.",
-                    "terms_text": "Droits TV et cinéma accordés.",
-                    "is_exclusive": False,
-                },
-                "SYNC": {
-                    "title": "Sync License",
-                    "price": 399.99,
-                    "description": "Utilisation du beat pour des publicités, films et jeux vidéo.",
-                    "terms_text": "Droits de synchronisation pour médias accordés.",
-                    "is_exclusive": False,
-                }
-            }
+    "BASIC": {
+        "title": "Basic License",
+        "description": "License basique avec utilisation commerciale limitée.",
+        "terms_text": "Non-exclusive, max 100k streams.",
+        "license_file_types": ["mp3"],  # Seulement MP3 pour une licence basique
+        "is_exclusive": False,
+    },
+    "PREMIUM": {
+        "title": "Premium License",
+        "price": 99.99,
+        "description": "License premium avec droits commerciaux étendus.",
+        "terms_text": "Non-exclusive, streams illimités, monétisation autorisée.",
+        "license_file_types": ["mp3", "wav"],  # Formats de meilleure qualité inclus
+        "is_exclusive": False,
+    },
+    "UNLIMITED": {
+        "title": "Unlimited License",
+        "price": 199.99,
+        "description": "Streams, ventes et monétisation illimités.",
+        "terms_text": "Non-exclusive, pas de limite d’utilisation.",
+        "license_file_types": ["mp3", "wav", "flac"],  # Qualité maximale pour une licence illimitée
+        "is_exclusive": False,
+    },
+    "EXCLUSIVE": {
+        "title": "Exclusive License",
+        "price": 499.99,
+        "description": "Vous obtenez tous les droits sur le beat.",
+        "terms_text": "Exclusive, pas de limite d’utilisation.",
+        "license_file_types": ["mp3", "wav", "flac", "stems"],  # Inclut les stems pour modification complète
+        "is_exclusive": True,
+    },
+    "RADIO": {
+        "title": "Radio License",
+        "price": 149.99,
+        "description": "Licence pour diffusion radio avec redevance SACEM.",
+        "terms_text": "Utilisation radio autorisée, pas de vente directe.",
+        "license_file_types": ["mp3", "wav"],  # Radio nécessite du WAV pour qualité broadcast
+        "is_exclusive": False,
+    },
+    "TV": {
+        "title": "TV License",
+        "price": 299.99,
+        "description": "Licence autorisant l’utilisation pour la télévision et les films.",
+        "terms_text": "Droits TV et cinéma accordés.",
+        "license_file_types": ["wav", "flac", "stems"],  # Qualité maximale et possibilité de mixage
+        "is_exclusive": False,
+    },
+    "SYNC": {
+        "title": "Sync License",
+        "price": 399.99,
+        "description": "Utilisation du beat pour des publicités, films et jeux vidéo.",
+        "terms_text": "Droits de synchronisation pour médias accordés.",
+        "license_file_types": ["wav", "flac", "stems", "zip"],  # Inclut stems et pack complet pour synchronisation
+        "is_exclusive": False,
+    }
+}
             # Appliquer les valeurs du template
             template_values = templates_data.get(self.license_template, {})
             for field, value in template_values.items():
