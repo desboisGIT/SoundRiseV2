@@ -2,6 +2,8 @@ from django.urls import path,include
 from .views import RegisterView,LogoutView,VerifyEmailView,CustomTokenObtainPairView, GoogleLoginView
 from rest_framework_simplejwt.views import  TokenRefreshView
 from . import views
+from . import testing_views
+
 
 
 app_name="authentication"
@@ -16,6 +18,8 @@ urlpatterns = [
     path('google/login/', GoogleLoginView.as_view(), name='google_login'),
     path('google/callback/', views.google_callback, name='google_callback'),  # Callback
 
+    # Tests:
+    path('test/echo-cookies/', testing_views.EchoCookiesView.as_view(), name='echo-cookies')
 ]
 
 

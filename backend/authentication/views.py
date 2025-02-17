@@ -67,21 +67,44 @@ class RegisterView(CreateAPIView):
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
-        # Vérifie si l'IP est suspecte
+        # Check suspicious IP
         ip, _ = get_client_ip(request)
         if is_suspicious_ip(request):
             return Response({"error": "Connexion bloquée pour cette IP."}, status=status.HTTP_403_FORBIDDEN)
         
-        # Exécute la logique par défaut d'authentification
+        # Use the default logic to validate user credentials and generate tokens
         response = super().post(request, *args, **kwargs)
 
-        # Si la connexion est réussie, récupérer l'utilisateur et mettre à jour son statut en ligne
+        # If successful, mark the user as online
         if response.status_code == 200:
             user = CustomUser.objects.get(email=request.data.get("email"))
             user.is_online = True
-            user.save(update_fields=["is_online"])  # Mise à jour efficace du champ
+            user.save(update_fields=["is_online"])
+
+            # Extract tokens from the response data
+            data = response.data
+            access_token = data.get("access")
+            refresh_token = data.get("refresh")
+
+            # Instead of storing the access token in a cookie, store the REFRESH token in a cookie
+            # That way, the access token remains short-lived and stored in-memory on the client
+            response.set_cookie(
+                key="refresh_token",
+                value=refresh_token,
+                httponly=True,      # Prevents JS from reading it
+                secure=True,        # In dev: can be False if you're not on HTTPS
+                samesite="None"     # Typically needed if you're handling cross-site flows (Google OAuth, etc.)
+            )
+
+            # (Optionally) remove the refresh token from the response body so it’s not exposed to JavaScript
+            # If you don't remove it, you risk having it in plain JSON. It's up to you.
+            data.pop("refresh", None)
+
+            # The final response should still contain the access token so you can store it in your client’s memory (React state, Redux, etc.)
+            response.data = data
 
         return response
+
     
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
@@ -146,37 +169,39 @@ def get_tokens_for_user(user):
 @csrf_exempt
 def google_callback(request):
     """
-    Vérifie si un utilisateur a un compte Google. Si oui, connecte-le, sinon crée un compte.
+    Google callback endpoint:
+    - Verifies the Google id_token.
+    - Finds or creates a user linked to the Google account.
+    - Generates JWT tokens.
+    - Logs in the user.
+    - Returns the access token in the JSON response.
+    - Stores the refresh token in a secure, HttpOnly cookie.
     """
-    print("Google Callback")
-
     if request.method != "POST":
         return JsonResponse({"error": "Invalid request method"}, status=400)
 
     try:
-        # Récupérer le token depuis le body JSON
+        # Parse the incoming JSON data to retrieve the id_token
         data = json.loads(request.body)
         token_id = data.get("token")
-
         if not token_id:
             return JsonResponse({"error": "No token provided"}, status=400)
 
-        # Vérifier le token auprès de Google
+        # Verify the token with Google's tokeninfo endpoint
         token_url = "https://oauth2.googleapis.com/tokeninfo"
         token_response = requests.get(f"{token_url}?id_token={token_id}")
-
         if token_response.status_code != 200:
             return JsonResponse({"error": "Invalid token"}, status=400)
-
         user_info = token_response.json()
+
+        # Extract necessary user details from Google
         google_id = user_info.get("sub")
         google_email = user_info.get("email")
         google_name = user_info.get("name")
-
         if not google_id or not google_email:
             return JsonResponse({"error": "Invalid user data from Google"}, status=400)
 
-        # Vérifier si l'utilisateur existe déjà
+        # Find existing SocialAccount or create a new user and SocialAccount
         try:
             social_account = SocialAccount.objects.get(uid=google_id, provider="google")
             user = social_account.user
@@ -192,33 +217,36 @@ def google_callback(request):
                 extra_data=user_info,
             )
 
-        # Générer un token JWT
-        tokens = get_tokens_for_user(user)
+        # Generate JWT tokens (access and refresh) for the user
+        tokens = get_tokens_for_user(user)  # returns a dict with keys "access" and "refresh"
 
-        # Connecter l'utilisateur
+        # Log the user in using the allauth backend
         user.backend = "allauth.account.auth_backends.AuthenticationBackend"
         login(request, user, backend=user.backend)
 
-        # Retourner la réponse avec le token
-        response = JsonResponse({"message": "Login successful", "tokens": tokens})
+        # Prepare the JSON response with the access token
+        response = JsonResponse({
+            "message": "Login successful",
+            "access": tokens["access"],
+        })
 
-        # Optionnel: Stocker le token dans un cookie sécurisé (alternative à localStorage)
+        # Store the refresh token in a secure HttpOnly cookie
         response.set_cookie(
-            key="access_token",
-            value=tokens["access"],
-            httponly=True,
-            secure=True,  # Change to False for localhost testing
-            samesite="Strict"
+            key="refresh_token",
+            value=tokens["refresh"],
+            httponly=True,     # Prevents JS access to the cookie
+            secure=True,       # Set to False in dev if not using HTTPS
+            samesite="None"     # For cross-site usage (adjust in production as needed)
         )
 
         return response
 
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
-
     except Exception as e:
         print("Error in google_callback:", str(e))
         return JsonResponse({"error": "Internal Server Error"}, status=500)
+
 
 
 class GoogleLoginView(SocialLoginView):
