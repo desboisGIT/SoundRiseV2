@@ -3,6 +3,7 @@ from core.models import CustomUser
 # Create your models here.
 
 class Conversation(models.Model):
+    title=models.CharField(max_length=200,default='Conversation')
     participants = models.ManyToManyField(CustomUser, related_name="conversations")
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -25,11 +26,14 @@ class Message(models.Model):
         ordering = ["-timestamp"]
 
 
-class ConversationRequest(models.Model):
-    sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="sent_requests")
-    receiver = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="received_requests")
-    status = models.CharField(max_length=10, choices=[("pending", "Pending"), ("accepted", "Accepted"), ("declined", "Declined")], default="pending")
+
+    
+class Invitation(models.Model):
+    sender = models.ForeignKey(CustomUser, related_name="sent_invitations", on_delete=models.CASCADE)
+    receiver = models.ForeignKey(CustomUser, related_name="received_invitations", on_delete=models.CASCADE)
+    message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, default='pending')  # 'pending', 'accepted', 'rejected'
 
     def __str__(self):
-        return f"Demande de {self.sender} à {self.receiver} - {self.status}"
+        return f"Invitation de {self.sender} à {self.receiver}"

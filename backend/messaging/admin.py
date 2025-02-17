@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Conversation, Message, ConversationRequest
+from .models import Conversation, Message, Invitation
 
 @admin.register(Conversation)
 class ConversationAdmin(admin.ModelAdmin):
@@ -24,8 +24,10 @@ class MessageAdmin(admin.ModelAdmin):
     short_content.short_description = "Contenu"
 
 
-@admin.register(ConversationRequest)
-class ConversationRequestAdmin(admin.ModelAdmin):
+
+
+@admin.register(Invitation)
+class InvitationsRequestAdmin(admin.ModelAdmin):
     list_display = ("id", "sender", "receiver", "status", "created_at")
     list_filter = ("status", "created_at")
     search_fields = ("sender__username", "receiver__username")

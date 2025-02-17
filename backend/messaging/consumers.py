@@ -1,153 +1,222 @@
+# consumers.py
+
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
-from asgiref.sync import sync_to_async
 from channels.db import database_sync_to_async
-
-
-
+from .models import Conversation, Invitation, Message
+from core.models import CustomUser
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.room_name = self.scope["url_route"]["kwargs"]["room_name"]
-        self.room_group_name = f"chat_{self.room_name}"
+        """Connecte l'utilisateur au WebSocket et le joint à son groupe utilisateur."""
+        self.user = self.scope['user']
+        self.room_name = f'user_{self.user.id}'
 
-        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
+        # Rejoindre le groupe de l'utilisateur
+        await self.channel_layer.group_add(
+            self.room_name,
+            self.channel_name
+        )
+
         await self.accept()
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
-
-    async def receive(self, text_data):
-        data = json.loads(text_data)
-        message = data["message"]
-        sender = data["sender"]
-
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {"type": "chat_message", "message": message, "sender": sender},
+        """Déconnecte l'utilisateur du WebSocket et quitte le groupe utilisateur."""
+        await self.channel_layer.group_discard(
+            self.room_name,
+            self.channel_name
         )
 
-    async def chat_message(self, event):
-        await self.send(text_data=json.dumps({"message": event["message"], "sender": event["sender"]}))
-
-
-
-
-import logging
-
-logger = logging.getLogger(__name__)
-
-class ChatRequestConsumer(AsyncWebsocketConsumer):
-    """ Consommateur WebSocket pour les demandes de conversation """
-
-    async def connect(self):
-        token = self.scope.get('headers', {}).get('authorization', None)
-        if token is None:
-            # Si le token n'est pas présent, rejeter la connexion
-            await self.close()
-        else:
-            # Extraire et valider le token ici (par exemple avec JWT)
-            # Si la validation échoue, vous pouvez aussi fermer la connexion
-            self.user = await self.validate_token(token)
-            if self.user is None:
-                await self.close()
-
-            # Si tout est bon, accepter la connexion
-            await self.accept()
-
-
-    
-
     async def receive(self, text_data):
-        """ Gère les actions reçues via WebSocket """
+        print(f"Message reçu : {text_data}")  # Vérifie si un message est reçu
         data = json.loads(text_data)
         action = data.get("action")
-        logger.info(f"Message reçu de {self.user.username} : {action}")
 
-        if action == "send_request":
-            await self.send_request(data)
-        elif action == "accept_request":
-            await self.accept_request(data)
-        elif action == "decline_request":
-            await self.decline_request(data)
+        if action == "send_message":
+            conversation_id = data["conversation_id"]
+            receiver_id = data["receiver_id"]
+            content = data["content"]
+
+            sender = self.user
+
+            # Envoyer le message
+            await self.send_message(conversation_id, sender, receiver_id, content)
+            
+    @database_sync_to_async
+    def get_receiver(self, conversation, receiver_id):
+        """Récupérer l'utilisateur destinataire de manière asynchrone"""
+        return conversation.participants.get(id=receiver_id)
 
     @database_sync_to_async
-    def get_user(self, user_id):
-        from core.models import CustomUser
-        """ Récupère un utilisateur par son ID """
-        logger.debug(f"Récupération de l'utilisateur avec l'ID {user_id}")
-        return CustomUser.objects.get(id=user_id)
+    def get_conversation(self, conversation_id):
+        """Récupérer la conversation de manière asynchrone"""
+        return Conversation.objects.get(id=conversation_id)
 
-    async def send_request(self, data):
-        from messaging.models import ConversationRequest
-        """ Envoie une demande de conversation à un utilisateur """
-        receiver_id = data.get("receiver_id")
-        receiver = await self.get_user(receiver_id)
+    @database_sync_to_async
+    def create_message(self, conversation, sender, receiver, content):
+        """Créer un message dans la base de données"""
+        return Message.objects.create(
+            conversation=conversation,
+            sender=sender,
+            receiver=receiver,
+            content=content
+        )
 
-        logger.info(f"{self.user.username} envoie une demande à {receiver.username}")
-        request, created = await database_sync_to_async(ConversationRequest.objects.get_or_create)(sender=self.user, receiver=receiver, status="pending")
+    async def send_message(self, conversation_id, sender, receiver_id, content):
+        """Envoie un message dans une conversation existante."""
+        try:
+            conversation = await self.get_conversation(conversation_id)
+            receiver = await self.get_receiver(conversation, receiver_id)
+            message = await self.create_message(conversation, sender, receiver, content)
+
+            # Envoyer la notification au destinataire
+            await self.channel_layer.group_send(
+                f'user_{receiver_id}',
+                {
+                    'type': 'new_message',
+                    'message': {
+                        'sender': sender.username,
+                        'content': message.content,
+                        'timestamp': str(message.timestamp)
+                    }
+                }
+            )
+        except Conversation.DoesNotExist:
+            await self.send(text_data=json.dumps({
+                'error': f'Conversation {conversation_id} non trouvée.'
+            }))
+
+    async def new_message(self, event):
+        """Gère la réception d'un nouveau message et l'envoie au client WebSocket."""
+        await self.send(text_data=json.dumps(event['message']))
+
+
+
+
+class InvitationConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.user = self.scope['user']
+        if self.user.is_authenticated:
+            self.room_group_name = f"user_{self.user.id}"
+            await self.channel_layer.group_add(
+                self.room_group_name,
+                self.channel_name
+            )
+            await self.accept()
+            print(f"Utilisateur {self.user.username} connecté au canal {self.room_group_name}")
+        else:
+            print("Utilisateur non authentifié - connexion refusée")
+            await self.close()
+
+    async def receive(self, text_data):
+        """Cette méthode gère les messages entrants."""
+        print(f"Message reçu : {text_data}")
+        data = json.loads(text_data)
+
+        # Vérifie l'action
+        if data.get('action') == 'send_invitation':
+            receiver_id = data.get('receiver_id')
+            message = data.get('message', 'Nouvelle invitation')
+            print(f"Envoi d'une invitation à l'utilisateur {receiver_id} avec le message : {message}")
+
+            # Crée l'invitation en base de données
+            await self.create_invitation(receiver_id, message)
+
+            # Envoie la notification au destinataire
+            await self.send_invitation(receiver_id, message)
+        
+        elif data.get('action') == 'accept_invitation':
+            invitation_id = data.get('invitation_id')
+            await self.accept_invitation(invitation_id)
+
+    async def send_invitation(self, receiver_id, message):
+        """Envoie une invitation en direct au destinataire via WebSocket."""
+        await self.channel_layer.group_send(
+            f"user_{receiver_id}",
+            {
+                'type': 'invitation_message',
+                'message': message,
+                'sender': self.user.username,
+            }
+        )
+        print(f"Invitation envoyée au canal user_{receiver_id}")
+
+    async def invitation_message(self, event):
+        """Reçoit et renvoie une invitation au client WebSocket."""
+        await self.send(text_data=json.dumps({
+            'message': event['message'],
+            'sender': event['sender'],
+        }))
+        print(f"Invitation reçue et renvoyée au client : {event['message']}")
+
+    @database_sync_to_async
+    def create_invitation(self, receiver_id, message):
+        """Créer une invitation dans la base de données."""
+        try:
+            receiver = CustomUser.objects.get(id=receiver_id)
+            Invitation.objects.create(
+                sender=self.user,
+                receiver=receiver,
+                message=message
+            )
+            print(f"Invitation créée en base de données pour le destinataire {receiver.username}")
+        except Exception as e:
+            print(f"Erreur lors de la création de l'invitation : {e}")
+
+    async def accept_invitation(self, invitation_id):
+        """Accepter une invitation, créer une conversation et notifier l'expéditeur."""
+        from .models import Invitation  # Importe le modèle
+
+        try:
+            # Récupérer l'invitation de manière asynchrone
+            invitation = await database_sync_to_async(Invitation.objects.select_related('receiver', 'sender').get)(id=invitation_id)
+
+            # Vérifier que l'utilisateur est bien le destinataire de l'invitation
+            if invitation.receiver == self.user:
+                # Marquer l'invitation comme acceptée
+                invitation.status = "accepted"
+                await database_sync_to_async(invitation.save)()
+
+                print(f"Invitation {invitation_id} acceptée par {self.user.username}")
+
+                # Créer la conversation entre les deux utilisateurs
+                await self.create_conversation(invitation.sender, invitation.receiver)
+
+                # Notifier l'expéditeur que l'invitation a été acceptée
+                await self.send_invitation_accepted(invitation.sender.id)
+
+                print("Invitation acceptée, conversation créée et notification envoyée.")
+            else:
+                print("Tentative d'acceptation d'une invitation non autorisée.")
+        except Invitation.DoesNotExist:
+            print(f"Invitation {invitation_id} non trouvée.")
+
+    @database_sync_to_async
+    def create_conversation(self, sender, receiver):
+        """Créer une conversation entre deux utilisateurs après acceptation de l'invitation."""
+        from .models import Conversation  # Importe le modèle
+
+        # Vérifie si une conversation existe déjà entre les deux utilisateurs
+        conversation, created = Conversation.objects.get_or_create(
+            title=f"Conversation entre {sender.username} et {receiver.username}"
+        )
+
+        # Ajoute les utilisateurs à la conversation s'ils ne sont pas déjà participants
+        conversation.participants.add(sender, receiver)
 
         if created:
-            logger.info(f"Demande de conversation créée entre {self.user.username} et {receiver.username}")
-            await self.channel_layer.group_send(
-                f"user_{receiver.id}",
-                {
-                    "type": "chat_request_notification",
-                    "sender_id": self.user.id,
-                    "sender_username": self.user.username,
-                }
-            )
+            print(f"Nouvelle conversation créée entre {sender.username} et {receiver.username}.")
+        else:
+            print(f"Une conversation existait déjà entre {sender.username} et {receiver.username}.")
 
-    async def accept_request(self, data):
-        from messaging.models import ConversationRequest, Conversation
-        """ Accepte une demande de conversation et crée une conversation """
-        request_id = data.get("request_id")
-        request = await database_sync_to_async(ConversationRequest.objects.get)(id=request_id)
+        return conversation
 
-        logger.info(f"{self.user.username} accepte la demande de conversation de {request.sender.username}")
-        if request.receiver == self.user:
-            request.status = "accepted"
-            await database_sync_to_async(request.save)()
-
-            conversation = await database_sync_to_async(Conversation.objects.create)()
-            await database_sync_to_async(conversation.participants.add)(request.sender, request.receiver)
-
-            logger.info(f"Conversation créée entre {request.sender.username} et {request.receiver.username}")
-            await self.channel_layer.group_send(
-                f"user_{request.sender.id}",
-                {
-                    "type": "chat_request_accepted",
-                    "conversation_id": conversation.id,
-                }
-            )
-
-    async def decline_request(self, data):
-        from messaging.models import ConversationRequest
-        """ Refuse une demande de conversation """
-        request_id = data.get("request_id")
-        request = await database_sync_to_async(ConversationRequest.objects.get)(id=request_id)
-
-        logger.info(f"{self.user.username} refuse la demande de conversation de {request.sender.username}")
-        if request.receiver == self.user:
-            request.status = "declined"
-            await database_sync_to_async(request.save)()
-
-            await self.channel_layer.group_send(
-                f"user_{request.sender.id}",
-                {
-                    "type": "chat_request_declined",
-                    "request_id": request.id,
-                }
-            )
-
-    async def chat_request_notification(self, event):
-        """ Envoie une notification de demande de chat """
-        await self.send(text_data=json.dumps(event))
-
-    async def chat_request_accepted(self, event):
-        """ Notifie l'acceptation d'une demande de chat """
-        await self.send(text_data=json.dumps(event))
-
-    async def chat_request_declined(self, event):
-        """ Notifie le refus d'une demande de chat """
-        await self.send(text_data=json.dumps(event))
+    async def send_invitation_accepted(self, sender_id):
+        """Notifier l'expéditeur que l'invitation a été acceptée."""
+        await self.channel_layer.group_send(
+            f"user_{sender_id}",
+            {
+                'type': 'invitation_accepted',
+                'message': f"L'invitation a été acceptée par {self.user.username}.",
+            }
+        )
