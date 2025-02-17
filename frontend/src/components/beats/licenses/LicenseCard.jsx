@@ -1,10 +1,22 @@
 import "./LicenseCard.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faPencil } from "@fortawesome/free-solid-svg-icons";
+import { useState } from "react";
 
-export default function LicenseCard({ title, description, price, files, conditions, onEdit, onDelete }) {
+export default function LicenseCard({ title, description, price, files, conditions, onEdit, onDelete, onUserSelect }) {
+  const [isSelected, setIsSelected] = useState(false);
   return (
-    <div className="license-card">
+    <div
+      className={`license-card ${isSelected ? "active" : ""}`}
+      onClick={
+        onUserSelect
+          ? () => {
+              setIsSelected(!isSelected);
+              onUserSelect();
+            }
+          : null
+      }
+    >
       <div className="flex space aling-center">
         <h2 className="license-card-title no-overflow">{title || "Titre"}</h2>
         {(onEdit || onDelete) && (

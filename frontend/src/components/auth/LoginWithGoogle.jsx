@@ -31,7 +31,7 @@ const LoginWithGoogle = () => {
     } catch (error) {
       console.error("Error authenticating:", error);
     }
-    window.location.reload();
+    //window.location.reload();
   };
 
   const onFailure = (error) => {

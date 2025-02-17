@@ -1,14 +1,7 @@
 import axios from "axios";
+import { getAuthHeaders } from "./requestHelpers";
 
 const API_URL = "http://127.0.0.1:8000/api/beats/licenses";
-
-// Helper function to retrieve the auth headers (adjust token retrieval as needed)
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("access_token"); // or use your preferred token store
-  return {
-    Authorization: `Bearer ${token}`,
-  };
-};
 
 // 1. Create a License
 export const createLicense = async (licenseData) => {
