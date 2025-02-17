@@ -93,6 +93,7 @@ INSTALLED_APPS = [
     'django_extensions',
     "channels",
     "multiselectfield",
+    "stripe",
 
     # Apps custom
     'core',
@@ -100,6 +101,7 @@ INSTALLED_APPS = [
     'beats',
     "messaging",
     "websockets",
+    'transaction',
 ]
 
 # ---------------------------------------------------------
@@ -268,7 +270,7 @@ CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_SAMESITE = 'Lax' # (prod-check)
 X_FRAME_OPTIONS = "DENY"  # Empêche l’inclusion dans un iframe
 SESSION_COOKIE_AGE = 86400  # 24 hours
-SESSION_SAVE_EVERY_REQUEST = True 
+SESSION_SAVE_EVERY_REQUEST = True
 
 # ---------------------------------------------------------
 # Configuration de l'authentification sociale
@@ -330,3 +332,15 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+
+
+STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
+STRIPE_PUBLIC_KEY = os.getenv('STRIPE_PUBLIC_KEY')
+STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
+STRIPE_CONNECT_CLIENT_ID = os.getenv('STRIPE_CONNECT_CLIENT_ID')
+
+
+STRIPE_REFRESH_URL="https://soundrise.com/retry-onboarding"
+STRIPE_RETURN_URL="https://soundrise.com/dashboard"
+
+SOUNDRISE_TAX=0.03
