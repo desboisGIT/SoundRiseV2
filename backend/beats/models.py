@@ -8,6 +8,7 @@ from multiselectfield.db.fields import MultiSelectField
 
 
 
+
 class Beat(models.Model):
     """
     Modèle représentant un beat musical sur Soundrise.
@@ -18,6 +19,7 @@ class Beat(models.Model):
     bpm = models.PositiveIntegerField(default=120)  # BPM (tempo)
     key = models.CharField(max_length=10, blank=True, null=True)  # Clé musicale (ex: C#m, F#)
     genre = models.CharField(max_length=100, blank=True, null=True)  # Genre du beat (Hip-Hop, Trap, Afrobeat...)
+    hashtags = models.ManyToManyField("Hashtag", related_name="beats", blank=True)
 
     main_track = models.ForeignKey('BeatTrack', on_delete=models.SET_NULL, null=True, blank=True, related_name='main_beats')  # Piste principale sélectionnée
     duration = models.FloatField(blank=True, null=True, help_text="Durée de la piste sélectionnée en secondes")  # Durée de la piste sélectionnée
@@ -309,6 +311,7 @@ class DraftBeat(models.Model):
     bpm = models.IntegerField(blank=True, null=True)
     key = models.CharField(max_length=10, blank=True, null=True)
     genre = models.CharField(max_length=100, blank=True, null=True)
+    hashtags = models.ManyToManyField("Hashtag", related_name="draftbeats", blank=True)
     cover_image = models.ImageField(upload_to="draft/covers/", blank=True, null=True)  # Image de couverture optionnelle
     audio_file = models.FileField(upload_to="draft/audio_files/", blank=True, null=True)  # Fichier sélectionné automatiquement
     is_public = models.BooleanField(default=True, help_text="Définit si le beat est public ou privé.")  # Visibilité
@@ -340,3 +343,10 @@ class Conditions(models.Model):
 
     def __str__(self):
         return self.title
+    
+
+class Hashtag(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+
+    def __str__(self):
+        return self.name

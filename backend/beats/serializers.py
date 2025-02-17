@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Beat, License, BeatTrack,BeatComment,Conditions,DraftBeat
+from .models import Beat, License, BeatTrack,BeatComment,Conditions,DraftBeat,Hashtag
 
 class BeatSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(source='user.id', read_only=True)  # Afficher l'ID de l'utilisateur
@@ -7,6 +7,9 @@ class BeatSerializer(serializers.ModelSerializer):
     likes = serializers.SerializerMethodField()  # Personnaliser la sérialisation des likes
     is_liked = serializers.SerializerMethodField()
     is_favorited = serializers.SerializerMethodField()
+    hashtags = serializers.SlugRelatedField(
+        many=True, queryset=Hashtag.objects.all(), slug_field="name"
+    )
 
     def get_likes(self, obj):
         # Retourner les usernames des utilisateurs qui ont aimé le beat
@@ -14,7 +17,7 @@ class BeatSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Beat
-        fields = ['id', 'title', 'audio_file', 'cover_image', 'bpm', 'key', 'genre', 'price'
+        fields = ['id', 'title', 'audio_file', 'cover_image', 'bpm', 'key', 'genre',"hashtags", 'price'
                   , 'likes_count', 'created_at', 'updated_at', 'user', 'user_id', 'likes',"is_liked","is_favorited"]
     def get_is_liked(self, obj):
         user = self.context["request"].user
@@ -23,6 +26,17 @@ class BeatSerializer(serializers.ModelSerializer):
     def get_is_favorited(self, obj):
         user = self.context["request"].user
         return user.is_authenticated and obj.favorites.filter(id=user.id).exists()
+    
+    def create(self, validated_data):
+        hashtag_names = validated_data.pop("hashtag_names", [])
+        beat = Beat.objects.create(**validated_data)
+
+        # Ajouter les hashtags existants ou les créer
+        for name in hashtag_names:
+            hashtag, created = Hashtag.objects.get_or_create(name=name.lower())
+            beat.hashtags.add(hashtag)
+
+        return beat
 
 
 
@@ -128,8 +142,25 @@ class DraftBeatSerializer(serializers.ModelSerializer):
         model = DraftBeat
         fields = '__all__'
 
+    def create(self, validated_data):
+        hashtag_names = validated_data.pop("hashtag_names", [])
+        draft = DraftBeat.objects.create(**validated_data)
+
+        # Ajouter les hashtags existants ou les créer
+        for name in hashtag_names:
+            hashtag, created = Hashtag.objects.get_or_create(name=name.lower())
+            draft.hashtags.add(hashtag)
+
+        return draft
+
 
 class ConditionsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Conditions
         fields = ['id', 'title', 'value', 'is_unlimited', 'description', 'created_at']
+
+
+class HashtagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Hashtag
+        fields = ["id", "name"]

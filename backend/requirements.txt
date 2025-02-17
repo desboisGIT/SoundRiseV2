@@ -25,6 +25,7 @@ Django==5.1.6
 django-allauth==65.4.1
 django-axes==7.0.1
 django-cors-headers==4.7.0
+django-environ==0.12.0
 django-extensions==3.2.3
 django-filter==24.3
 django-ipware==7.0.1
@@ -63,6 +64,7 @@ six==1.17.0
 social-auth-app-django==5.4.2
 social-auth-core==4.5.4
 sqlparse==0.5.3
+stripe==11.5.0
 Twisted==24.11.0
 txaio==23.1.1
 typing_extensions==4.12.2
@@ -70,4 +72,5 @@ tzdata==2025.1
 urllib3==2.3.0
 vine==5.1.0
 wcwidth==0.2.13
+websockets==14.2
 zope.interface==7.2

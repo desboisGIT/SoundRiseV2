@@ -2,8 +2,8 @@
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
-from .models import Beat,License,BeatTrack,BeatComment,DraftBeat,Conditions
-from .serializers import BeatSerializer,BeatActionSerializer,LicenseSerializer,BeatTrackSerializer,BeatCommentSerializer,ConditionsSerializer,DraftBeatSerializer
+from .models import Beat,License,BeatTrack,BeatComment,DraftBeat,Conditions,Hashtag
+from .serializers import BeatSerializer,BeatActionSerializer,LicenseSerializer,BeatTrackSerializer,BeatCommentSerializer,ConditionsSerializer,DraftBeatSerializer,HashtagSerializer
 from django.db.models import Q
 from core.models import CustomUser
 from rest_framework import viewsets, permissions, generics
@@ -73,6 +73,13 @@ def filter_beats(request):
             Q(title__icontains=search) | Q(user__username__icontains=search)
         )
 
+    # 🔹 Filtrage par hashtags
+    hashtags = request.GET.get("hashtags", None)
+    if hashtags:
+        hashtag_names = [h.strip().lower() for h in hashtags.split(",")]
+        queryset = queryset.filter(hashtags__name__in=hashtag_names).distinct()
+
+        
     # Appliquer les filtres spécifiques
     queryset = queryset.filter(**filter_params)
 
@@ -347,6 +354,7 @@ class FinalizeDraftView(APIView):
                 "cover_image": draft.cover_image,
                 "genre": draft.genre,
                 "is_public": draft.is_public,
+                "hashtags":draft.hashtags,
             }
 
             # Passer le contexte 'request' au sérialiseur
@@ -397,3 +405,9 @@ def user_drafts(request):
     
     # Retourner la réponse avec les données sérialisées
     return Response(serializer.data)
+
+
+class HashtagViewSet(viewsets.ModelViewSet):
+    queryset = Hashtag.objects.all()
+    serializer_class = HashtagSerializer
+    permission_classes = [AllowAnyGetAuthenticatedElse]
