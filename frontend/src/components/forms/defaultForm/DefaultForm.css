@@ -1,87 +1,84 @@
 .default-form {
-    display: flex;
-    flex-direction: column;
-    height: fit-content;
-    width: fit-content;
-    max-width: 500px;
-    padding: 10px;
-    margin-bottom: 20px;
-    background-color: var(--main-background-color);
-    color: rgb(245, 245, 245);
-    border: 1px solid #505050bb;
-    transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1) !important;
-    padding: 20px;
-    border-radius: 15px;
-    width: fit-content !important;
-    font-family: 'Poppins', Arial, Helvetica, sans-serif;
+  display: flex;
+  flex-direction: column;
+  height: fit-content;
+  width: fit-content;
+  max-width: 500px;
+  padding: 10px;
+  margin-bottom: 20px;
+  background-color: var(--main-background-color);
+  color: rgb(245, 245, 245);
+  border: 1px solid #505050bb;
+  transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1) !important;
+  padding: 20px;
+  border-radius: 15px;
+  width: fit-content !important;
+  font-family: "Poppins", Arial, Helvetica, sans-serif;
 }
 .default-form-title {
-    margin-top: 2px;
-    margin-left: 5px;
+  margin-top: 2px;
+  margin-left: 5px;
 }
 
 .default-form:hover {
-    box-shadow: 0px 0px 1px rgba(165, 165, 165, 0.01),
-        0px 0px 4px rgba(165, 165, 165, 0.02),
-        0px 0px 9px rgba(165, 165, 165, 0.03),
-        0px 0px 15px rgba(165, 165, 165, 0.04),
-        0px 0px 24px rgba(165, 165, 165, 0.05);
+  box-shadow: 0px 0px 1px rgba(165, 165, 165, 0.01), 0px 0px 4px rgba(165, 165, 165, 0.02),
+    0px 0px 9px rgba(165, 165, 165, 0.03), 0px 0px 15px rgba(165, 165, 165, 0.04),
+    0px 0px 24px rgba(165, 165, 165, 0.05);
 }
 
 .default-form-bottom-section {
-    display: flex;
-    flex-direction: column-reverse;
-    justify-content: space-between;
-    align-items: center;
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .default-form-bottom-section-text {
-    font-size: 0.9em;
-    cursor: pointer;
-    color: var(--link-color);
-    user-select: none !important;
-
+  font-size: 0.9em;
+  cursor: pointer;
+  color: var(--link-color);
+  user-select: none !important;
 }
 .default-form-bottom-section-text:hover {
-    text-decoration: underline;
+  text-decoration: underline;
 }
 
 .default-form-bottom-section-sumbit-button {
-    display: inline-block;
-    width: 100%;
-    font-size: 1rem;
-    font-weight: 500;
-    font-family: 'Poppins';
-    text-align: center;
-    vertical-align: middle;
-    cursor: pointer;
-    padding: 0.675rem 0.75rem;
-    border: 1px solid transparent;
-    border-radius: 0.25rem;
-    background-color: #007bff; /* Bootstrap primary color */
-    color: #fff;
-    text-decoration: none;
-    transition: background-color 0.15s ease-in-out;
+  display: inline-block;
+  width: 100%;
+  font-size: 1rem;
+  font-weight: 500;
+  font-family: "Poppins";
+  text-align: center;
+  vertical-align: middle;
+  cursor: pointer;
+  padding: 0.675rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+  background-color: #007bff; /* Bootstrap primary color */
+  color: #fff;
+  text-decoration: none;
+  transition: background-color 0.15s ease-in-out;
 }
 .default-form-bottom-section-sumbit-button:hover {
-    background-color: #0056b3; /* Darker shade for hover */
-    border-color: #0056b3;
-  }
-  
-.default-form-forms, .default-form form {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    gap: 10px;
+  background-color: #0056b3; /* Darker shade for hover */
+  border-color: #0056b3;
 }
 
-.default-form-forms{
-    margin-bottom: 10px;
+.default-form-forms,
+.default-form form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 10px;
+}
+
+.default-form-forms {
+  margin-bottom: 10px;
 }
 
 input:-webkit-autofill {
-    /* Force a consistent background so that your animations are not disrupted */
-    -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0) inset !important;
-    transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1) !important;
-  }
-  
+  /* Force a consistent background so that your animations are not disrupted */
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0) inset !important;
+  transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1) !important;
+}

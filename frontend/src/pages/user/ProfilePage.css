@@ -1,0 +1,31 @@
+/* ProfilePage.css */
+.profile-page {
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    text-align: center;
+  }
+  
+  .profile-picture-container {
+    margin-bottom: 20px;
+  }
+  
+  .profile-picture {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 50%;
+  }
+  
+  .profile-details h1 {
+    margin-bottom: 10px;
+  }
+  
+  .profile-email,
+  .profile-bio,
+  .profile-status {
+    margin: 5px 0;
+  }
+  

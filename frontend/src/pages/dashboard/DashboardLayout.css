@@ -1,0 +1,20 @@
+.dashboard-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.dashboard-separator {
+  display: flex;
+  height: 100%;
+}
+
+.dashboard-content {
+  flex: 1 1 auto;
+  padding: 20px;
+}
+
+.default-box {
+  color: rgb(245, 245, 245);
+  font-family: "Poppins", Arial, Helvetica, sans-serif;
+}

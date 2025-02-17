@@ -1,0 +1,25 @@
+/* DashBoardTopBar.css */
+.dashboard-topbar {
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  background-color: #232323;
+  color: #fff;
+}
+.dashboard-topbar h3 {
+  margin: 0;
+}
+
+.toggle-sidebar-btn {
+  margin-top: 2px !important;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.2em;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+.topbar-title {
+  font-weight: 400;
+}

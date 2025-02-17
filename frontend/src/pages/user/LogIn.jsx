@@ -32,13 +32,14 @@ export default function LogIn() {
     e.preventDefault();
     setError(null);
     try {
-      handleNotify("Bienvenue sur SoundRise", "success");
       const data = await loginApi(email, password);
       // Instead of just setting localStorage here, call the login function from the context
       login(data.access, data.refresh);
+      handleNotify("Bienvenue sur SoundRise", "success");
       axios.defaults.headers.common["Authorization"] = `Bearer ${data.access}`;
       navigate("/account");
     } catch (err) {
+      handleNotify(err.response?.data?.detail || "Login failed. Please try again.", "error");
       setError(err.response?.data?.detail || "Login failed. Please try again.");
     }
   };

@@ -2,9 +2,19 @@ body {
   margin: 0px;
   background-color: #121212;
 }
-body, html, #root {
+body,
+html,
+#root {
   width: 100%;
   height: 100%;
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+body::-webkit-scrollbar,
+html::-webkit-scrollbar,
+#root::-webkit-scrollbar {
+  display: none;
 }
 
 .SoundRiseLogoMain {
@@ -17,7 +27,7 @@ body, html, #root {
   --second-background-color: #121212; /* eg: body */
   --text-color: #f1f1f1;
   --link-color: #176bfd;
-  --button-background: #006AFF;
+  --button-background: #006aff;
   --button-text: #6a11cb;
 }
 
@@ -26,7 +36,8 @@ body, html, #root {
   border-radius: 0.25rem; /* Slightly increased border radius for a softer look */
   border: 1px solid #505050;
   padding: 12px; /* Increased padding for comfort */
-  transition: all .3s ease-in-out; /* Adjusted transition for smoother effects */
+  transition: transform 0.3s ease-in-out, background 0.3s ease-in-out, box-shadow 0.3s ease-in-out; /* Adjusted transition for smoother effects */
+
   font-family: "Poppins", Arial, Helvetica, sans-serif !important;
   caret-color: rgb(164, 29, 182);
   color: #e0e0e0;
@@ -59,24 +70,32 @@ body, html, #root {
 
 /* Change the white to any color */
 input:-webkit-autofill,
-input:-webkit-autofill:hover, 
-input:-webkit-autofill:focus, 
-input:-webkit-autofill:active{
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: #ffffff;
-    transition: background-color 5000s ease-in-out 0s;
-    box-shadow: inset 0 0 20px 20px #23232329;
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: #ffffff;
+  transition: background-color 5000s ease-in-out 0s;
+  box-shadow: inset 0 0 20px 20px #23232329;
 }
 
-
 /*Change text in autofill textbox*/
-input:-webkit-autofill{
+input:-webkit-autofill {
   -webkit-text-fill-color: #e0e0e0 !important;
   background-color: rgb(14, 14, 14);
 }
 
 .flex {
   display: flex;
+}
+.space {
+  justify-content: space-between;
+}
+.gap-10 {
+  gap: 10px;
+}
+.aling-center {
+  align-items: center;
 }
 
 .default-container {
@@ -94,13 +113,15 @@ input:-webkit-autofill{
   padding: 20px;
   border-radius: 15px;
   width: fit-content !important;
-  font-family: 'Poppins', Arial, Helvetica, sans-serif;
+  font-family: "Poppins", Arial, Helvetica, sans-serif;
 }
 
 .default-container:hover {
-  box-shadow: 0px 0px 1px rgba(165, 165, 165, 0.01),
-      0px 0px 4px rgba(165, 165, 165, 0.02),
-      0px 0px 9px rgba(165, 165, 165, 0.03),
-      0px 0px 15px rgba(165, 165, 165, 0.04),
-      0px 0px 24px rgba(165, 165, 165, 0.05);
+  box-shadow: 0px 0px 1px rgba(165, 165, 165, 0.01), 0px 0px 4px rgba(165, 165, 165, 0.02),
+    0px 0px 9px rgba(165, 165, 165, 0.03), 0px 0px 15px rgba(165, 165, 165, 0.04),
+    0px 0px 24px rgba(165, 165, 165, 0.05);
+}
+
+.underlined {
+  text-decoration: underline;
 }
