@@ -9,10 +9,15 @@
   background-color: var(--main-background-color);
   color: rgb(245, 245, 245);
   border: 1px solid #505050bb;
-  transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1) !important;
+  transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1) !important;
   border-radius: 15px;
   font-family: "Poppins", Arial, Helvetica, sans-serif;
   cursor: pointer;
+}
+.license-card.active {
+  background-color: rgba(38, 69, 107, 0.089);
+  border: 1px solid rgba(1, 81, 201, 0.73);
+  box-shadow: 0 4px 15px rgba(1, 81, 201, 0.226);
 }
 
 .license-card p {
@@ -30,9 +35,8 @@
 }
 
 .license-card:hover {
-  box-shadow: 0px 0px 1px rgba(165, 165, 165, 0.01), 0px 0px 4px rgba(165, 165, 165, 0.02),
-    0px 0px 9px rgba(165, 165, 165, 0.03), 0px 0px 15px rgba(165, 165, 165, 0.04),
-    0px 0px 24px rgba(165, 165, 165, 0.05);
+  box-shadow: 0px 0px 1px rgba(165, 165, 165, 0.01), 0px 0px 4px rgba(165, 165, 165, 0.02), 0px 0px 9px rgba(165, 165, 165, 0.03),
+    0px 0px 15px rgba(165, 165, 165, 0.04), 0px 0px 24px rgba(165, 165, 165, 0.05);
 }
 
 .license-card-bottom-section {

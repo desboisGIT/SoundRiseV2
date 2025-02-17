@@ -265,9 +265,10 @@ AXES_COOLOFF_TIME = 0.0001  # Temps de pause après échecs (à ajuster)
 #SESSION_COOKIE_DOMAIN = "" (prod-check)
 SESSION_COOKIE_SECURE = False  # Pas de HTTPS en dev
 CSRF_COOKIE_SECURE = False
-SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SAMESITE = 'Lax' # (prod-check)
 X_FRAME_OPTIONS = "DENY"  # Empêche l’inclusion dans un iframe
-SESSION_COOKIE_AGE = 3600   # Expire après 1h d'inactivité
+SESSION_COOKIE_AGE = 86400  # 24 hours
+SESSION_SAVE_EVERY_REQUEST = True 
 
 # ---------------------------------------------------------
 # Configuration de l'authentification sociale

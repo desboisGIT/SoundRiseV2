@@ -17,14 +17,15 @@ import { useNotification } from "./components/NotificationContext";
 import ProfilePage from "./pages/user/ProfilePage";
 
 import DashboardLayout from "./pages/dashboard/DashBoardLayout";
-import DashBoardLicence from "./pages/dashboard/DashBoardLicence";
-import DashBoardBeats from "./pages/dashboard/DashBoardBeats";
-import DashboardUpload from "./pages/dashboard/DashBoardUpload";
-import DashBoardAnalytics from "./pages/dashboard/DashBoardAnalytics";
-import DashBoardProfile from "./pages/dashboard/DashBoardProfile";
-import DashBoardSettings from "./pages/dashboard/DashBoardSettings";
-import DashBoardSupport from "./pages/dashboard/DashBoardSupport";
-import DashBoardMessages from "./pages/dashboard/DashBoardMessages";
+import DashBoardLicence from "./pages/dashboard/licences/DashBoardLicence";
+import DashBoardBeats from "./pages/dashboard/beats/DashBoardBeats";
+import DashboardUpload from "./pages/dashboard/beats/DashBoardUpload";
+import DashBoardAnalytics from "./pages/dashboard/statistics/DashBoardAnalytics";
+import DashBoardProfile from "./pages/dashboard/accounts/DashBoardProfile";
+import DashBoardSettings from "./pages/dashboard/accounts/DashBoardSettings";
+import DashBoardSupport from "./pages/dashboard/utils/DashBoardSupport";
+import DashBoardMessages from "./pages/dashboard/accounts/DashBoardMessages";
+import DashBoardCreateBeats from "./pages/dashboard/beats/DashBoardCreateBeats";
 
 const clientId = "162639459241-vfs3ogmpn0fb9jhva7fhfc18k1qlqqm0.apps.googleusercontent.com";
 
@@ -104,6 +105,7 @@ const AppContent = () => {
           <Route path="settings" element={<DashBoardSettings />} />
           <Route path="messages" element={<DashBoardMessages />} />
           <Route path="support" element={<DashBoardSupport />} />
+          <Route path="upload-a-banger" element={<DashBoardCreateBeats />} />
         </Route>
       </Routes>
     </>

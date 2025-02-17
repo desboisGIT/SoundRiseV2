@@ -1,0 +1,11 @@
+.collaboration-dropdown {
+  opacity: 0;
+  z-index: -1000;
+  transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.collaboration-dropdown.active {
+  opacity: 1 !important;
+  z-index: 1000;
+  transform: translateY(20px);
+}

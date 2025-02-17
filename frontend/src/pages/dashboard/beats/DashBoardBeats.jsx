@@ -1,7 +1,7 @@
 export default function DashBoardBeats() {
   return (
     <div>
-      <h1>Dashboard Bite</h1>
+      <h1>DashboardBeats</h1>
     </div>
   );
 }

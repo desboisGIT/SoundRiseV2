@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import "./DashBoardLicence.css";
-import ViewLicence from "../../components/dashBoard/pageComponents/viewLicence/ViewLicence";
-import EditLicence from "../../components/dashBoard/pageComponents/editLicence/EditLicence";
-import DefaultPopUp from "../../components/popups/DefaultPopUp";
-import { createLicense, updateLicense, deleteLicense } from "../../api/licence";
+import ViewLicence from "../../../components/dashBoard/pageComponents/viewLicence/ViewLicence";
+import EditLicence from "../../../components/dashBoard/pageComponents/editLicence/EditLicence";
+import DefaultPopUp from "../../../components/popups/DefaultPopUp";
+import { createLicense, updateLicense, deleteLicense } from "../../../api/licence";
 
 export default function DashBoardLicence() {
   const [page, setPage] = useState("list");
