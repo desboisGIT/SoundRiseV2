@@ -27,17 +27,20 @@ class Beat(models.Model):
     duration = models.FloatField(blank=True, null=True, help_text="Durée de la piste sélectionnée en secondes")  # Durée de la piste sélectionnée
     audio_file = models.FileField(upload_to="beats/audio_files/", blank=True, null=True)  # Fichier sélectionné automatiquement
     # Artistes associés
-    main_artist = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="beats")  # Artiste principal
+    main_artist = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="beats")
     co_artists = models.ManyToManyField(CustomUser, related_name="featured_beats", blank=True)  # Co-artistes
 
     # models liés
-    tracks = models.ManyToManyField('BeatTrack', related_name="beat")
+    tracks = models.ManyToManyField('BeatTrack', related_name="beats", blank=True)
     licenses = models.ManyToManyField('License', related_name="beat")
 
 
     # Système de likes
     likes = models.ManyToManyField(CustomUser, related_name="liked_beats", blank=True)
     likes_count = models.IntegerField(default=0)
+
+    #vues 
+    views = models.ManyToManyField("BeatView", related_name="view_beat", blank=True)
 
     # Promotion
     promo_discount = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, help_text="Réduction en %")
@@ -100,6 +103,9 @@ class Beat(models.Model):
             self.file_type = best_track.file_type  # Mettre à jour le type de fichier
             self.main_track = best_track  # Mettre à jour la piste principale
             
+    @property
+    def total_views(self):
+        return self.views.count()  # Compte toutes les vues enregistrées
 
 
     def save(self, *args, **kwargs):
@@ -125,6 +131,18 @@ class Beat(models.Model):
 
 
 
+class BeatView(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, blank=True)  
+    beat = models.ForeignKey("Beat", on_delete=models.CASCADE, related_name="beat_views")  # Changer le related_name    
+    ip_address = models.GenericIPAddressField(null=True, blank=True)  # Vue par IP
+    viewed_at = models.DateTimeField(auto_now_add=True)  # Date de la vue
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["beat", "user"], name="unique_user_beat_view"),
+            models.UniqueConstraint(fields=["beat", "ip_address"], name="unique_ip_beat_view")
+        ]
+
 
 class BeatComment(models.Model):
     beat = models.ForeignKey("Beat", on_delete=models.CASCADE, related_name="comments")
@@ -147,7 +165,7 @@ class BeatTrack(models.Model):
     """
     Modèle pour gérer plusieurs pistes audio associées à un Beat.
     """
-    
+    beat = models.ForeignKey(Beat, on_delete=models.CASCADE)
     title = models.CharField(max_length=255, help_text="Titre de la piste (Ex: Version MP3, WAV, Stems...)")
     audio_file = models.FileField(upload_to="beats/audio-track/")
     file_type = models.CharField(max_length=10, blank=True, null=True)  # Type de fichier
@@ -184,10 +202,8 @@ class BeatTrack(models.Model):
     def __str__(self):
         return f"{self.title} "
     
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['beat', 'file_type'], name='unique_beat_filetype')
-        ]
+    
+    
 
 
 class License(models.Model):

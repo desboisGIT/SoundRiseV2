@@ -2,7 +2,7 @@
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
-from .models import Beat,License,BeatTrack,BeatComment,DraftBeat,Conditions,Hashtag
+from .models import Beat,License,BeatTrack,BeatComment,DraftBeat,Conditions,Hashtag,BeatView
 from .serializers import BeatSerializer,BeatActionSerializer,LicenseSerializer,BeatTrackSerializer,BeatCommentSerializer,ConditionsSerializer,DraftBeatSerializer,HashtagSerializer
 from django.db.models import Q
 from core.models import CustomUser
@@ -12,10 +12,12 @@ from rest_framework.decorators import action
 from rest_framework import viewsets, status
 from django.db import transaction
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.exceptions import ValidationError   
+from rest_framework.exceptions import ValidationError 
+from django.db import IntegrityError  
 import json
 from rest_framework.generics import ListAPIView
 from .permissions import AllowAnyGetAuthenticatedElse
+
 
 @api_view(['GET'])
 def filter_beats(request):
@@ -515,3 +517,50 @@ class HashtagViewSet(viewsets.ModelViewSet):
     queryset = Hashtag.objects.all()
     serializer_class = HashtagSerializer
     permission_classes = [AllowAnyGetAuthenticatedElse]
+
+
+
+def get_client_ip(request):
+    """Récupère l'adresse IP du client"""
+    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(",")[0]
+    else:
+        ip = request.META.get("REMOTE_ADDR")
+    return ip
+
+
+class AddBeatView(APIView):
+    def post(self, request, beat_id):
+        """Ajoute une vue à un Beat si l'utilisateur ou l'IP ne l'a pas encore vu"""
+        try:
+            beat = Beat.objects.get(id=beat_id)
+        except Beat.DoesNotExist:
+            return Response({"error": "Beat non trouvé"}, status=status.HTTP_404_NOT_FOUND)
+
+        user = request.user if request.user.is_authenticated else None
+        ip_address = get_client_ip(request) if user is None else None  # On stocke l'IP si l'user n'est pas connecté
+
+        # Vérifier si la vue existe déjà
+        if user:
+            exists = BeatView.objects.filter(beat=beat, user=user).exists()
+        else:
+            exists = BeatView.objects.filter(beat=beat, ip_address=ip_address).exists()
+
+        if exists:
+            return Response({"message": "Vue déjà enregistrée"}, status=status.HTTP_200_OK)
+
+        # Ajouter la nouvelle vue
+        try:
+            BeatView.objects.create(beat=beat, user=user, ip_address=ip_address)
+            return Response({"message": "Vue ajoutée avec succès"}, status=status.HTTP_201_CREATED)
+        except IntegrityError:
+            return Response({"message": "Vue déjà existante"}, status=status.HTTP_200_OK)
+        
+class GetBeatViews(APIView):
+    def get(self, request, beat_id):
+        try:
+            beat = Beat.objects.get(id=beat_id)
+            return Response({"total_views": beat.total_views}, status=status.HTTP_200_OK)
+        except Beat.DoesNotExist:
+            return Response({"error": "Beat non trouvé"}, status=status.HTTP_404_NOT_FOUND)

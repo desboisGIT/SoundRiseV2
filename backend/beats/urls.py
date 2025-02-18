@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from rest_framework.routers import DefaultRouter
-from .views import BeatViewSet, LicenseViewSet, BeatTrackViewSet, BeatCommentViewSet,FinalizeDraftView,DraftBeatListCreateView,DraftBeatDetailView,UserLicenseListView,CreateConditionsView,UserTracksView,user_drafts
+from .views import BeatViewSet, LicenseViewSet, BeatTrackViewSet, BeatCommentViewSet,FinalizeDraftView,DraftBeatListCreateView,DraftBeatDetailView,UserLicenseListView,CreateConditionsView,UserTracksView,user_drafts,AddBeatView,GetBeatViews
 router = DefaultRouter()
 router.register(r"beats", BeatViewSet)
 
@@ -9,6 +9,8 @@ router.register(r"beats", BeatViewSet)
 urlpatterns = [
     # Autres URLs ici...
     path('filter/', views.filter_beats, name='filter_beats'),
+    path("<int:beat_id>/add_view/", AddBeatView.as_view(), name="add_beat_view"),
+        path('<int:beat_id>/views/', GetBeatViews.as_view(), name='get_beat_views'),   # Récupérer le nombre de vues
     
 
     path('licenses/', LicenseViewSet.as_view({
