@@ -5,7 +5,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .serializers import RegisterSerializer,generate_verification_token 
 from django.core.mail import send_mail
-from rest_framework_simplejwt.tokens import RefreshToken,AccessToken
+from rest_framework_simplejwt.tokens import RefreshToken, AccessToken, TokenError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -105,6 +105,27 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
         return response
 
+class CustomTokenRefreshView(APIView):
+    """
+    Custom Refresh Token view.
+    Attempts to obtain the refresh token from the request data first.
+    If not provided, it falls back to reading it from the request cookies.
+    """
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.data.get("refresh")
+        if not refresh_token:
+            refresh_token = request.COOKIES.get("refresh_token")
+        
+        if not refresh_token:
+            return Response({"error": "No refresh token provided."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            token = RefreshToken(refresh_token)
+            # Optionally: If ROTATE_REFRESH_TOKENS is enabled, rotate here and set a new cookie.
+            new_access = str(token.access_token)
+            return Response({"access": new_access}, status=status.HTTP_200_OK)
+        except TokenError as e:
+            return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
     
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
