@@ -410,6 +410,41 @@ class FinalizeDraftView(APIView):
         co_artists_data = draft.co_artists.all()  # Co-artistes envoyés dans la requête
         tracks_data = draft.tracks.all()  # Récupérer tous les tracks associés au brouillon
         user = request.user
+
+
+        # Vérification des tracks
+        required_file_types = set()
+        for license_obj in licenses_data:
+            required_file_types.update(license_obj.license_file_types)  # Types de fichiers exigés par la licence
+
+        provided_file_types = {track.file_type for track in tracks_data}
+
+        # Vérifier si tous les types requis sont fournis
+        missing_types = required_file_types - provided_file_types
+        if missing_types:
+            return Response(
+                {"error": f"Les fichiers suivants sont manquants pour respecter les licences: {', '.join(missing_types)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Vérifier qu'aucun fichier non demandé n'est ajouté
+        extra_types = provided_file_types - required_file_types
+        if extra_types:
+            return Response(
+                {"error": f"Les fichiers suivants ne sont pas nécessaires pour cette licence et ne doivent pas être inclus: {', '.join(extra_types)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Vérifier que chaque type de fichier est unique
+        file_type_counts = {}
+        for track in tracks_data:
+            if track.file_type in file_type_counts:
+                return Response(
+                    {"error": f"Le fichier '{track.file_type}' est présent en plusieurs exemplaires. Assurez-vous qu'il n'y a pas de doublon."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            file_type_counts[track.file_type] = True
+
         with transaction.atomic():
             
             # 1️⃣ **Création du Beat**
@@ -438,6 +473,8 @@ class FinalizeDraftView(APIView):
 
             # 4️⃣ **Association des Tracks**
             beat.tracks.set(tracks_data)  # Associer directement les tracks au Beat
+            if beat.tracks.exists():
+                draft.tracks.all().delete()
 
             # ✅ Suppression du brouillon
             draft.delete()
