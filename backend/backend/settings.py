@@ -21,7 +21,7 @@ load_dotenv(ENV_PATH)  # Charge le fichier .env
 # ---------------------------------------------------------
 SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = os.getenv("DEBUG") == "True"
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'api.example.local']
+ALLOWED_HOSTS = ['127.0.0.1', 'api.example.local']
 
 # ---------------------------------------------------------
 # Configuration des sites et comptes utilisateurs
@@ -41,7 +41,7 @@ ACCOUNT_LOGIN_REDIRECT_URL = "/api/auth/google/callback/"
 # Configuration CORS et CSRF
 # ---------------------------------------------------------
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Frontend Vite
+    "http://127.0.0.1:5173",  # Frontend Vite
 ]
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
@@ -54,11 +54,8 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
 CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
+    "http://127.0.0.1:5173",
     "http://127.0.0.1:8000",
-    "http://localhost:8000",
-    "https://127.0.0.1:8000",
-    "https://localhost:8000",
 ]
 
 # ---------------------------------------------------------

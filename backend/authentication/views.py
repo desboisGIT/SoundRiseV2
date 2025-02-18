@@ -106,15 +106,9 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         return response
 
 class CustomTokenRefreshView(APIView):
-    """
-    Custom Refresh Token view.
-    Attempts to obtain the refresh token from the request data first.
-    If not provided, it falls back to reading it from the request cookies.
-    """
     def post(self, request, *args, **kwargs):
-        refresh_token = request.data.get("refresh")
-        if not refresh_token:
-            refresh_token = request.COOKIES.get("refresh_token")
+        print("Received cookies:", request.COOKIES) 
+        refresh_token = request.COOKIES.get("refresh_token")
         
         if not refresh_token:
             return Response({"error": "No refresh token provided."}, status=status.HTTP_400_BAD_REQUEST)
@@ -132,18 +126,15 @@ class LogoutView(APIView):
 
     def post(self, request):
         try:
-            refresh_token = request.data.get("refresh", None)
+            # Try to get the refresh token from the request data; fallback to cookie if not provided.
+            refresh_token = request.COOKIES.get("refresh_token")
             if not refresh_token:
                 return Response({"error": "Le token de rafraîchissement est requis"}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Vérifier si l'utilisateur est bien authentifié
-            if not request.user.is_authenticated:
-                return Response({"error": "Utilisateur non authentifié"}, status=status.HTTP_401_UNAUTHORIZED)
-
-            # Essayer d'invalider le token (nécessite la blacklisting activée)
+            print(refresh_token)
+            # Invalidate the refresh token.
             try:
                 token = RefreshToken(refresh_token)
-                token.blacklist()  # Vérifie bien que la blacklist est activée
+                token.blacklist()  # Requires blacklisting to be enabled.
             except AttributeError:
                 logger.error("Blacklist non activée. Assure-toi que SIMPLE_JWT['TOKEN_BLACKLIST'] = True")
                 return Response({"error": "La blacklist des tokens n'est pas activée"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -151,17 +142,20 @@ class LogoutView(APIView):
                 logger.error(f"Erreur lors de l'invalidation du token: {str(e)}")
                 return Response({"error": "Token invalide ou déjà blacklisté"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Mettre à jour `is_online = False`
+            # Set user offline.
             user = request.user
             user.is_online = False
             user.save(update_fields=["is_online"])
 
-            return Response({"message": "Déconnexion réussie"}, status=status.HTTP_204_NO_CONTENT)
+            # Create response and delete the refresh token cookie.
+            response = Response({"message": "Déconnexion réussie"}, status=status.HTTP_204_NO_CONTENT)
+            response.delete_cookie("refresh_token")
+            return response
 
         except Exception as e:
             logger.error(f"Erreur générale lors de la déconnexion: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        
+
 
 class VerifyEmailView(APIView):
     def get(self, request, token, *args, **kwargs):
