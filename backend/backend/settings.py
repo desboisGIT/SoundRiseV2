@@ -91,6 +91,8 @@ INSTALLED_APPS = [
     "channels",
     "multiselectfield",
     "stripe",
+   
+    
 
     # Apps custom
     'core',

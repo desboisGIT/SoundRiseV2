@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from rest_framework.routers import DefaultRouter
-from .views import BeatViewSet, LicenseViewSet, BeatTrackViewSet, BeatCommentViewSet,FinalizeDraftView,DraftBeatListCreateView,DraftBeatDetailView,UserLicenseListView,CreateConditionsView,UserTracksView,user_drafts,AddBeatView,GetBeatViews
+from .views import BeatViewSet, LicenseViewSet, BeatCommentViewSet,FinalizeDraftView,DraftBeatListCreateView,DraftBeatDetailView,UserLicenseListView,user_drafts,AddBeatView,GetBeatViews
 router = DefaultRouter()
 router.register(r"beats", BeatViewSet)
 
@@ -26,18 +26,6 @@ urlpatterns = [
 
     path("licenses/user/", UserLicenseListView.as_view(), name="user-licenses"),
 
-
-    path('tracks/', BeatTrackViewSet.as_view({
-        'get': 'list',
-        'post': 'create',
-    }), name='get_tracks'),
-    path('tracks/<int:pk>/', BeatTrackViewSet.as_view({
-        'get': 'retrieve',
-        'put': 'update',
-        'patch': 'partial_update',
-        'delete': 'destroy'
-    }), name='track_detail'),
-    path('tracks/user/', UserTracksView.as_view(), name='user_beats'),
 
 
     path('', BeatViewSet.as_view({
@@ -69,6 +57,6 @@ urlpatterns = [
     path('finalize-draft/<int:draft_id>/', FinalizeDraftView.as_view(), name='finalize-draft'),
 
     path('conditions/<int:license_id>/', views.conditions_by_license, name='conditions-by-license'),
-    path('conditions/', CreateConditionsView.as_view(), name='create_conditions'),
+
 ]
 

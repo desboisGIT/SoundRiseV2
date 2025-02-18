@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Beat, License, BeatTrack,BeatComment,Conditions,DraftBeat,Hashtag
+from .models import Beat, License,BeatComment,DraftBeat,Hashtag
 
 class BeatSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(source='user.id', read_only=True)  # Afficher l'ID de l'utilisateur
@@ -39,19 +39,11 @@ class BeatSerializer(serializers.ModelSerializer):
         return beat
 
 
-
-class BeatTrackSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BeatTrack
-        fields = "__all__"
-
-
-
 class LicenseSerializer(serializers.ModelSerializer):
     license_file_types = serializers.ListField(child=serializers.CharField())
     class Meta:
         model = License
-        fields = ['id', 'title', 'price', 'description', 'is_exclusive', 'created_at' ,"conditions","license_template","license_file_types","terms_text","tracks"]
+        fields = ['id', 'title', 'price', 'description', 'is_exclusive', 'created_at' ,"conditions","license_template","license_file_types","terms_text"]
         read_only_fields = ["user"]
     
     def to_representation(self, instance):
@@ -70,7 +62,6 @@ class LicenseSerializer(serializers.ModelSerializer):
 
 class BeatActionSerializer(serializers.ModelSerializer):
     licenses = LicenseSerializer(many=True, read_only=True)  # Récupérer les licences associées
-    tracks = BeatTrackSerializer(many=True, read_only=True)  # Récupérer les pistes audio associées
     is_liked = serializers.SerializerMethodField()
     is_favorited = serializers.SerializerMethodField()
 
@@ -121,22 +112,12 @@ class BeatCommentSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-class ConditionsSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Conditions
-        fields = ['id', 'title', 'value', 'is_unlimited', 'description', 'created_at']
 
-    def to_representation(self, instance):
-        """Personnalise la sortie pour afficher 'Illimité' si is_unlimited est True."""
-        data = super().to_representation(instance)
-        if instance.is_unlimited:
-            data['value'] = "Illimité"
-        return data
     
 
 class DraftBeatSerializer(serializers.ModelSerializer):
-    tracks = serializers.PrimaryKeyRelatedField(queryset=BeatTrack.objects.all(), many=True)
     licenses = serializers.PrimaryKeyRelatedField(queryset=License.objects.all(), many=True)
+    hashtag_names = serializers.ListField(child=serializers.CharField(), required=False)  # Ajout des hashtags sous forme de liste de noms
 
     class Meta:
         model = DraftBeat
@@ -145,14 +126,16 @@ class DraftBeatSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         print(validated_data)  # Débug : voir quelles données sont reçues
 
+        # Extraire les informations supplémentaires avant de créer l'objet
         hashtag_names = validated_data.pop("hashtag_names", [])
-        hashtags_data = validated_data.pop("hashtags", [])  
-        tracks_data = validated_data.pop("tracks", [])  # Retirer tracks s'il existe
+        hashtags_data = validated_data.pop("hashtags", [])
         licenses_data = validated_data.pop("licenses", [])  # Retirer licenses s'il existe
         co_artists_data = validated_data.pop("co_artists", [])  # Retirer co_artists s'il existe
 
-        draft = DraftBeat.objects.create(**validated_data)  # Créer l'objet sans ManyToMany
+        # Créer l'objet DraftBeat sans ManyToMany et sans fichiers audio
+        draft = DraftBeat.objects.create(**validated_data)
 
+        # Ajouter les hashtags
         if hashtag_names:
             hashtags = [Hashtag.objects.get_or_create(name=name.lower())[0] for name in hashtag_names]
             draft.hashtags.add(*hashtags)
@@ -160,25 +143,22 @@ class DraftBeatSerializer(serializers.ModelSerializer):
         if hashtags_data:
             draft.hashtags.add(*hashtags_data)
 
-        if tracks_data:
-            draft.tracks.set(tracks_data)  # Ajouter correctement les tracks
-
+        # Ajouter les licenses
         if licenses_data:
-            draft.licenses.set(licenses_data)  # Ajouter correctement les licenses
+            draft.licenses.set(licenses_data)
 
+        # Ajouter les co-artistes
         if co_artists_data:
-            draft.co_artists.set(co_artists_data)  # Ajouter correctement les co-artistes
+            draft.co_artists.set(co_artists_data)
+
+        # Gérer l'ajout des fichiers audio
+        audio_formats = ['mp3', 'wav', 'flac', 'ogg', 'aac', 'alac', 'zip']
+        for format in audio_formats:
+            if format in validated_data:
+                setattr(draft, format, validated_data[format])  # Associer le fichier audio au bon champ
+        draft.save()  # Sauvegarder les modifications après avoir ajouté les fichiers audio
 
         return draft
-
-
-
-
-
-class ConditionsSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Conditions
-        fields = ['id', 'title', 'value', 'is_unlimited', 'description', 'created_at']
 
 
 class HashtagSerializer(serializers.ModelSerializer):

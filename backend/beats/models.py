@@ -5,8 +5,11 @@ from django.dispatch import receiver
 from django.utils.timezone import now
 from mutagen import File
 from multiselectfield.db.fields import MultiSelectField
-from django.db.models.signals import pre_delete
+from django.db.models.signals import pre_delete,post_save
 from django.core.exceptions import ValidationError
+
+
+
 
 
 
@@ -23,21 +26,23 @@ class Beat(models.Model):
     genre = models.CharField(max_length=100, blank=True, null=True)  # Genre du beat (Hip-Hop, Trap, Afrobeat...)
     hashtags = models.ManyToManyField("Hashtag", related_name="beats", blank=True)
     is_free =models.BooleanField(default=True, help_text="Définit si le beat est gratuiit ou payant.")  # Visibilité
-    main_track = models.ForeignKey('BeatTrack', on_delete=models.SET_NULL, null=True, blank=True, related_name='main_beats')  # Piste principale sélectionnée
     duration = models.FloatField(blank=True, null=True, help_text="Durée de la piste sélectionnée en secondes")  # Durée de la piste sélectionnée
-    audio_file = models.FileField(upload_to="beats/audio_files/", blank=True, null=True)  # Fichier sélectionné automatiquement
     # Artistes associés
     main_artist = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="beats")
     co_artists = models.ManyToManyField(CustomUser, related_name="featured_beats", blank=True)  # Co-artistes
 
     # models liés
-    tracks = models.ManyToManyField('BeatTrack', related_name="beats", blank=True)
     licenses = models.ManyToManyField('License', related_name="beat")
 
 
     # Système de likes
     likes = models.ManyToManyField(CustomUser, related_name="liked_beats", blank=True)
     likes_count = models.IntegerField(default=0)
+
+    #favorites
+    favorites = models.ManyToManyField(CustomUser, related_name="favorited_beats", blank=True)
+    favorites_count = models.IntegerField(default=0)
+
 
     #vues 
     views = models.ManyToManyField("BeatView", related_name="view_beat", blank=True)
@@ -47,14 +52,22 @@ class Beat(models.Model):
     promo_end_date = models.DateTimeField(blank=True, null=True, help_text="Date de fin de la promotion")
 
     # Statut du beat
-    is_public = models.BooleanField(default=True, help_text="Définit si le beat est public ou privé.")  # Visibilité
     is_sold = models.BooleanField(default=False, help_text="Indique si le beat a été vendu en exclusivité.")  # Statut de vente
 
     created_at = models.DateTimeField(auto_now_add=True)  # Date de création
     updated_at = models.DateTimeField(auto_now=True)  # Dernière mise à jour
 
-    likes = models.ManyToManyField(CustomUser, related_name="liked_beats", blank=True)
-    favorites = models.ManyToManyField(CustomUser, related_name="favorited_beats", blank=True)
+    
+    audio_file=models.FileField(upload_to='beats/audio_file', null=True, blank=True)
+
+    #files
+    mp3 = models.FileField(upload_to='beats/%Y/%m/%d/', null=True, blank=True)
+    wav = models.FileField(upload_to='beats/%Y/%m/%d/', null=True, blank=True)
+    flac = models.FileField(upload_to='beats/%Y/%m/%d/', null=True, blank=True)
+    ogg = models.FileField(upload_to='beats/%Y/%m/%d/', null=True, blank=True)
+    aac = models.FileField(upload_to='beats/%Y/%m/%d/', null=True, blank=True)
+    alac = models.FileField(upload_to='beats/%Y/%m/%d/', null=True, blank=True)
+    zip = models.FileField(upload_to='beats/%Y/%m/%d/', null=True, blank=True)
 
     @property
     def price(self):
@@ -76,58 +89,87 @@ class Beat(models.Model):
 
     def select_best_audio(self):
         """
-        Sélectionne le fichier audio optimal parmi les tracks disponibles.
+        Sélectionne le fichier audio optimal parmi les formats disponibles.
         Gère aussi les formats inconnus.
         """
-        preferred_formats = ['.m4a', '.opus', '.mp3', '.ogg', '.wav', '.flac']
-        
-        # Récupérer toutes les pistes associées au Beat
-        tracks = self.tracks.all()
+        # Tous les formats audio disponibles dans le modèle Beat
+        available_formats = {
+            '.mp3': self.mp3,
+            '.wav': self.wav,
+            '.flac': self.flac,
+            '.ogg': self.ogg,
+            '.aac': self.aac,
+            '.alac': self.alac
+        }
 
-        # Trier les tracks par priorité de format, en mettant les formats inconnus à la fin
-        sorted_tracks = sorted(
-            tracks,
-            key=lambda track: preferred_formats.index(track.file_type) if track.file_type in preferred_formats else len(preferred_formats)
+        # Formats préférés, avec les formats inconnus à la fin
+        preferred_formats = ['.m4a', '.opus', '.mp3', '.ogg', '.wav', '.flac', '.aac', '.alac']
+
+        # Filtrer les fichiers audio non présents
+        available_files = [
+            {'file': file, 'file_type': ext}
+            for ext, file in available_formats.items() if file
+        ]
+
+        # Trier les fichiers par priorité de format, les formats inconnus étant mis à la fin
+        sorted_files = sorted(
+            available_files,
+            key=lambda af: preferred_formats.index(af['file_type']) if af['file_type'] in preferred_formats else len(preferred_formats)
         )
 
         # Gérer les formats inconnus
-        for track in tracks:
-            if track.file_type not in preferred_formats:
-                print(f"⚠️ Format inconnu détecté: {track.file_type} pour {track.audio_file}")
+        for af in available_files:
+            if af['file_type'] not in preferred_formats:
+                print(f"⚠️ Format inconnu détecté: {af['file_type']} pour {af['file']}")
 
-        # Sélectionner la meilleure piste disponible
-        if sorted_tracks:
-            best_track = sorted_tracks[0]  # Prend le premier fichier après tri
-            self.audio_file = best_track.audio_file
-            self.duration = best_track.duration  # Mettre à jour la durée du beat
-            self.file_type = best_track.file_type  # Mettre à jour le type de fichier
-            self.main_track = best_track  # Mettre à jour la piste principale
+        # Sélectionner le meilleur fichier audio disponible
+        if sorted_files:
+            best_file = sorted_files[0]  # Prend le premier fichier après tri
+            self.audio_file = best_file['file']
+            self.file_type = best_file['file_type']  # Mettre à jour le type de fichier
+
+            # Mettre à jour la durée en fonction du fichier audio
+            audio = File(self.audio_file)
+            self.duration = audio.info.length if audio else 0
+
+    def save(self, *args, **kwargs):
+        """
+        Méthode personnalisée save pour éviter la boucle infinie et appeler select_best_audio().
+        """
+        # Appeler select_best_audio pour sélectionner le meilleur fichier audio et mettre à jour la durée
+        self.select_best_audio()
+
+        # Appeler la méthode save d'origine pour sauvegarder l'objet sans recréer une boucle infinie
+        super(Beat, self).save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = "Beat"
+        verbose_name_plural = "Beats"
             
     @property
     def total_views(self):
         return self.views.count()  # Compte toutes les vues enregistrées
+    
 
 
-    def save(self, *args, **kwargs):
-        """
-        Surcharge du save pour sélectionner automatiquement l'audio_file avant sauvegarde.
-        Appel de select_best_audio si tracks a été modifié.
-        """
-        # Éviter l'appel en boucle en vérifiant que select_best_audio() n'est pas déjà appelé
-        if not hasattr(self, '_selecting_best_audio'):
-            self._selecting_best_audio = True
-            # Vérifier si les tracks ont été modifiés
-            if self.tracks.count() > 0:
-                self.select_best_audio()
-        if self.duration : 
-            self.duration = round(self.duration, 2)
-
-        super().save(*args, **kwargs)  # Sauvegarde initiale
-        delattr(self, '_selecting_best_audio')  # Supprimer l'indicateur après sauvegarde
+    
 
 
     def __str__(self):
         return f"{self.title} - {self.main_artist.username}"
+
+
+@receiver(m2m_changed, sender=Beat.likes.through)
+def update_likes_count(sender, instance, action, **kwargs):
+    if action in ["post_add", "post_remove"]:
+        instance.likes_count = instance.likes.count()
+        instance.save()
+
+@receiver(m2m_changed, sender=Beat.favorites.through)
+def update_likes_count(sender, instance, action, **kwargs):
+    if action in ["post_add", "post_remove"]:
+        instance.favorites_count = instance.favorites.count()
+        instance.save()
 
 
 
@@ -161,49 +203,8 @@ class BeatComment(models.Model):
 
 
 
-class BeatTrack(models.Model):
-    """
-    Modèle pour gérer plusieurs pistes audio associées à un Beat.
-    """
-    beat = models.ForeignKey(Beat, on_delete=models.CASCADE)
-    title = models.CharField(max_length=255, help_text="Titre de la piste (Ex: Version MP3, WAV, Stems...)")
-    audio_file = models.FileField(upload_to="beats/audio-track/")
-    file_type = models.CharField(max_length=10, blank=True, null=True)  # Type de fichier
-    duration = models.FloatField(blank=True, null=True, help_text="Durée de la piste en secondes")
 
-    def save(self, *args, **kwargs):
-        # Remplir automatiquement le type de fichier
-        if BeatTrack.objects.filter(beat=self.beat, file_type=self.file_type).exists():
-            raise ValidationError(f"Le type de fichier '{self.file_type}' existe déjà pour ce Beat.")
-        
-        if self.audio_file:
-            self.file_type = f".{self.audio_file.name.split('.')[-1]}"
-            
-        
-        # Remplir automatiquement la durée de la piste
-        if self.audio_file:
-            # Utilisation de pydub pour obtenir la durée de la piste
-            audio = File(self.audio_file)
-            duration = audio.info.length if audio else 0
-            
-            # Arrondir la durée à deux décimales
-            self.duration = round(duration, 2)
-            
 
-        super().save(*args, **kwargs)
-    
-    @staticmethod
-    def get_file_by_type(beat, file_type):
-        """
-        Retourne le fichier d'un Beat selon le type demandé (.mp3, .wav, .zip, etc.).
-        """
-        return BeatTrack.objects.filter(beat=beat, file_type=file_type).first()
-
-    def __str__(self):
-        return f"{self.title} "
-    
-    
-    
 
 
 class License(models.Model):
@@ -222,8 +223,8 @@ class License(models.Model):
     description = models.TextField(blank=True, null=True)  # Description de la licence
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)  # Prix de la licence
 
-    # Pistes audio incluses dans cette licence
-    tracks = models.ManyToManyField(BeatTrack, related_name="licenses", blank=True)
+
+    
 
     TEMPLATE_CHOICES = [
         ("CUSTOM", "Custom"),       # Créée à partir du brouillon
@@ -249,8 +250,72 @@ class License(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)
 
+
+
+    def clean(self):
+        # Si la licence est associée à un beat et que le template n'est pas 'custom'
+        if hasattr(self, 'beats') and self.beats.exists() and self.license_template != 'CUSTOM':
+            raise ValidationError(_("Impossible de modifier ou de supprimer une licence associée à un beat, sauf si elle utilise le modèle 'custom'."))
+        
+        # Si la licence est 'custom', vérifier les modifications permises
+        if self.license_template == 'CUSTOM':
+            allowed_fields = ['title', 'description', 'price']
+            changed_fields = self.get_dirty_fields()
+
+            for field in changed_fields:
+                if field not in allowed_fields:
+                    raise ValidationError(f"Le champ '{field}' ne peut être modifié que si le modèle de licence est 'CUSTOM'.")
+
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._original_values = self._get_current_values()
+
+    def _get_current_values(self):
+        """Récupère les valeurs actuelles de tous les champs"""
+        return {
+            'title': self.title,
+            'description': self.description,
+            'price': self.price,
+            'license_template': self.license_template,
+            'license_file_types': self.license_file_types,
+            'terms_text': self.terms_text,
+            'is_exclusive': self.is_exclusive,
+            'conditions': self.conditions,
+        }
+
+    def get_dirty_fields(self):
+        """Retourne les champs qui ont changé"""
+        dirty_fields = {}
+        for field, original_value in self._original_values.items():
+            current_value = getattr(self, field)
+            if current_value != original_value:
+                dirty_fields[field] = current_value
+        return dirty_fields
+
+    def delete(self, *args, **kwargs):
+        # Vérifiez si cette licence est la seule associée à un beat
+        if self.license_template != 'custom':
+            raise ValidationError(f"Vous ne pouvez pas supprimer cette license car c'est une templates.")
+        for beat in self.beats.all():
+            # Si le beat a exactement une seule licence (celle-ci), on lève une erreur
+            if beat.licenses.count() == 1:
+                raise ValidationError(f"Le beat '{beat.title}' n'a plus d'autres licences. Impossible de supprimer cette licence.")
+            
+            # Si le beat a d'autres licences associées, on met simplement la licence en is_active=False
+            if beat.licenses.count() > 1:
+                self.is_active = False
+                self.save()  # Sauvegarder la modification du statut de la licence
+                return  # Ne pas continuer à supprimer, on désactive juste la licence
+
+        # Si aucun beat n'a d'autre licence, on supprime la licence
+        super().delete(*args, **kwargs)
+
+            
     def save(self, *args, **kwargs):
         """Remplit automatiquement les informations si un template est sélectionné."""
+        
+
         if self.license_template != "CUSTOM":
             templates_data = {
     "BASIC": {
@@ -314,24 +379,29 @@ class License(models.Model):
             for field, value in template_values.items():
                 setattr(self, field, value)
 
-        super().save(*args, **kwargs)
+        self.clean() 
+        super(License, self).save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.title} - {('Exclusive' if self.is_exclusive else 'Non-Exclusive')}"
 
+@receiver(post_save, sender=CustomUser)
+def create_default_licenses(sender, instance, created, **kwargs):
+    if created:
+        # Créer une licence pour chaque template à la création de l'utilisateur
+        templates = ["BASIC", "PREMIUM", "UNLIMITED", "EXCLUSIVE", "RADIO", "TV", "SYNC"]
+        for template in templates:
+            License.objects.create(
+                user=instance,
+                license_template=template
+            )
 
-
-@receiver(m2m_changed, sender=Beat.likes.through)
-def update_likes_count(sender, instance, action, **kwargs):
-    if action in ["post_add", "post_remove"]:
-        instance.likes_count = instance.likes.count()
-        instance.save()
 
 
 
 
 class DraftBeat(models.Model):
-    """Modèle pour stocker un Beat en brouillon avec plusieurs Licenses et Tracks."""
+    """Modèle pour stocker un Beat en brouillon avec plusieurs Licenses ."""
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)  
     title = models.CharField(max_length=255, blank=True, null=True)
     bpm = models.IntegerField(blank=True, null=True)
@@ -339,68 +409,33 @@ class DraftBeat(models.Model):
     genre = models.CharField(max_length=100, blank=True, null=True)
     hashtags = models.ManyToManyField("Hashtag", related_name="draftbeats", blank=True)
     cover_image = models.ImageField(upload_to="draft/covers/", blank=True, null=True)  # Image de couverture optionnelle
-    audio_file = models.FileField(upload_to="draft/audio_files/", blank=True, null=True)  # Fichier sélectionné automatiquement
-    is_public = models.BooleanField(default=True, help_text="Définit si le beat est public ou privé.")  # Visibilité
-
+    
     co_artists =models.ManyToManyField(CustomUser, related_name="featured_draft_beats", blank=True)  # Co-artistes
 
     # ✅ Stockage des Licenses et Tracks sous forme de liste JSON 
     licenses = models.ManyToManyField(License, blank=True)
-    tracks = models.ManyToManyField(BeatTrack)
+
+    #files
+    mp3 = models.FileField(upload_to='beats/%Y/%m/%d/', null=True, blank=True)
+    wav = models.FileField(upload_to='beats/%Y/%m/%d/', null=True, blank=True)
+    flac = models.FileField(upload_to='beats/%Y/%m/%d/', null=True, blank=True)
+    ogg = models.FileField(upload_to='beats/%Y/%m/%d/', null=True, blank=True)
+    aac = models.FileField(upload_to='beats/%Y/%m/%d/', null=True, blank=True)
+    alac = models.FileField(upload_to='beats/%Y/%m/%d/', null=True, blank=True)
+    zip = models.FileField(upload_to='beats/%Y/%m/%d/', null=True, blank=True)
+
+    
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def validate_tracks(self):
-        """ Vérifie que les tracks correspondent aux licenses demandées """
-        required_file_types = set()
-        for license in self.licenses.all():
-            required_file_types.update(license.license_file_types)
-
-        uploaded_file_types = set(self.tracks.values_list("file_type", flat=True))
-
-        # Vérifier si des fichiers demandés manquent
-        missing_files = required_file_types - uploaded_file_types
-        if missing_files:
-            raise ValidationError(f"Il manque les fichiers suivants : {', '.join(missing_files)}")
-
-        # Vérifier s'il y a des fichiers uploadés en trop
-        extra_files = uploaded_file_types - required_file_types
-        if extra_files:
-            raise ValidationError(f"Ces fichiers ne sont pas demandés par la license : {', '.join(extra_files)}")
-
-        # Vérifier les doublons (pas deux fichiers du même type)
-        if len(uploaded_file_types) != len(self.tracks.all()):
-            raise ValidationError("Vous ne pouvez pas uploader deux fichiers du même type.")
+    
         
-    def save(self, *args, **kwargs):
-        self.validate_tracks()  # Lancer la validation avant la sauvegarde
-        super().save(*args, **kwargs)
 
 
 
-@receiver(pre_delete, sender=DraftBeat)
-def delete_tracks_with_draft(sender, instance, **kwargs):
-    instance.tracks.all().delete()  
 
-class Conditions(models.Model):
-    """Modèle pour stocker les conditions associéés aux licences."""
-    
-    title = models.CharField(max_length=255)
-    value = models.IntegerField(default=0, null=True, blank=True)
-    is_unlimited = models.BooleanField(default=False)
-    description = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
 
-    def save(self, *args, **kwargs):
-        """Surcharge de la méthode save pour gérer la valeur illimitée."""
-        if self.is_unlimited:
-            self.value = None  # Remplacer la valeur par None si illimité
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return self.title
-    
 
 class Hashtag(models.Model):
     name = models.CharField(max_length=50, unique=True)

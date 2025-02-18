@@ -2,8 +2,8 @@
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
-from .models import Beat,License,BeatTrack,BeatComment,DraftBeat,Conditions,Hashtag,BeatView
-from .serializers import BeatSerializer,BeatActionSerializer,LicenseSerializer,BeatTrackSerializer,BeatCommentSerializer,ConditionsSerializer,DraftBeatSerializer,HashtagSerializer
+from .models import Beat,License,BeatComment,DraftBeat,Hashtag,BeatView
+from .serializers import BeatSerializer,BeatActionSerializer,LicenseSerializer,BeatCommentSerializer,DraftBeatSerializer,HashtagSerializer
 from django.db.models import Q
 from core.models import CustomUser
 from rest_framework import viewsets, permissions, generics
@@ -228,60 +228,11 @@ class UserLicenseListView(ListAPIView):
 
     
 
-class BeatTrackViewSet(viewsets.ModelViewSet):
-    queryset = BeatTrack.objects.all()  # ✅ S'assurer que tous les objets sont récupérés
-    serializer_class = BeatTrackSerializer
-    permission_classes = [AllowAnyGetAuthenticatedElse]
     
-from django.http import JsonResponse
 
 
-class UserTracksView(APIView, LimitOffsetPagination):
-    """
-    Vue pour récupérer les beats associés à un utilisateur authentifié.
-    Ajout du filtrage des champs et de la pagination.
-    """
 
-    permission_classes = [IsAuthenticated]
-    default_limit = 10  # Nombre d'éléments par défaut
 
-    def get(self, request, *args, **kwargs):
-        user = request.user
-        
-        # Récupérer toutes les licences de l'utilisateur
-        licenses = License.objects.filter(user=user)
-        
-        # Récupérer tous les BeatTracks associés aux licences
-        tracks = BeatTrack.objects.filter(licenses__in=licenses).distinct()
-
-        # Pagination
-        results = self.paginate_queryset(tracks, request, view=self)
-        
-        # Sérialiser les données
-        serializer = BeatTrackSerializer(results, many=True)
-
-        # Filtrage des champs si "fields" est spécifié
-        fields_param = request.query_params.get("fields")
-        if fields_param:
-            requested_fields = set(fields_param.split(","))
-            
-            # Récupérer les champs du serializer en se basant sur une instance unique
-            serializer_instance = BeatTrackSerializer()
-            allowed_fields = set(serializer_instance.fields.keys())
-
-            valid_fields = requested_fields & allowed_fields
-
-            if not valid_fields:
-                raise ValidationError({"error": "Aucun champ valide spécifié."})
-
-            serialized_data = [
-                {field: track[field] for field in valid_fields} for track in serializer.data
-            ]
-        else:
-            serialized_data = serializer.data
-
-        # Retourner les données paginées avec les champs sélectionnés
-        return self.get_paginated_response(serialized_data)
 
 class BeatCommentViewSet(viewsets.ModelViewSet):
     serializer_class = BeatCommentSerializer
@@ -297,13 +248,18 @@ class BeatCommentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """ Assigner l'utilisateur connecté au commentaire """
         serializer.save(user=self.request.user)
-
 @api_view(['GET'])
 def conditions_by_license(request, license_id):
     """Retourne les conditions associées à une licence spécifique."""
-    conditions = Conditions.objects.filter(licenses__id=license_id)  # Utilisation de licenses__id
-    serializer = ConditionsSerializer(conditions, many=True)
-    return Response(serializer.data)
+    try:
+        # Trouver la licence avec l'id spécifique
+        license = License.objects.get(id=license_id)  # Utilisation de `get()` pour obtenir un seul objet License
+        conditions = license.conditions.all()  # Accéder aux conditions associées à cette licence
+        serializer = ConditionsSerializer(conditions, many=True)  # Sérialiser les conditions
+        return Response(serializer.data)
+    except License.DoesNotExist:
+        return Response({"detail": "License not found."}, status=status.HTTP_404_NOT_FOUND)
+
 
 
 
@@ -312,10 +268,28 @@ class DraftBeatListCreateView(generics.ListCreateAPIView):
     serializer_class = DraftBeatSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_queryset(self):
+        # Filtrer les drafts de l'utilisateur connecté
+        return DraftBeat.objects.filter(user=self.request.user)
+
+    def post(self, request, *args, **kwargs):
+        """Créer un nouveau brouillon avec l'utilisateur connecté comme créateur."""
+        # Assigner l'utilisateur connecté (request.user) lors de la création
+        data = request.data.copy()
+        data['user'] = request.user.id  # Assigner l'utilisateur automatiquement
+
+        # Utiliser le sérialiseur pour valider et enregistrer
+        serializer = self.get_serializer(data=data)
+        if serializer.is_valid():
+            draft_beat = serializer.save()  # Sauvegarder le brouillon
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     def patch(self, request, pk=None):
+        """Mettre à jour un brouillon spécifique."""
         try:
             # Récupérer l'objet DraftBeat
-            draft_beat = DraftBeat.objects.get(pk=pk)
+            draft_beat = DraftBeat.objects.get(pk=pk, user=request.user)
 
             # Récupérer les données envoyées dans la requête
             title = request.data.get('title', draft_beat.title)
@@ -323,12 +297,10 @@ class DraftBeatListCreateView(generics.ListCreateAPIView):
             key = request.data.get('key', draft_beat.key)
             genre = request.data.get('genre', draft_beat.genre)
             cover_image = request.data.get('cover_image', draft_beat.cover_image)
-            is_public = request.data.get('is_public', draft_beat.is_public)
             co_artists_ids = request.data.get('co_artists', [])
 
-            # Récupérer les IDs des licenses et tracks
+            # Récupérer les IDs des licenses 
             license_ids = request.data.get('license_ids', [])
-            track_ids = request.data.get('track_ids', [])
 
             # Mettre à jour les champs non-relations
             draft_beat.title = title
@@ -336,22 +308,16 @@ class DraftBeatListCreateView(generics.ListCreateAPIView):
             draft_beat.key = key
             draft_beat.genre = genre
             draft_beat.cover_image = cover_image
-            draft_beat.is_public = is_public
 
             # Ajouter les co-artists (ManyToMany relation)
             if co_artists_ids:
-                co_artists = CustomUser.objects.filter(id__in=co_artists_ids)  # On suppose que co_artists est une relation avec User
-                draft_beat.co_artists.add(*co_artists)
+                co_artists = CustomUser.objects.filter(id__in=co_artists_ids)
+                draft_beat.co_artists.set(co_artists)
 
             # Ajouter les licenses au DraftBeat (ManyToMany)
             if license_ids:
                 licenses = License.objects.filter(id__in=license_ids)
-                draft_beat.licenses.add(*licenses)
-
-            # Ajouter les tracks au DraftBeat (ManyToMany)
-            if track_ids:
-                tracks = BeatTrack.objects.filter(id__in=track_ids)
-                draft_beat.tracks.add(*tracks)
+                draft_beat.licenses.set(licenses)
 
             # Sauvegarder les modifications
             draft_beat.save()
@@ -359,20 +325,8 @@ class DraftBeatListCreateView(generics.ListCreateAPIView):
             return Response({"status": "DraftBeat updated successfully"}, status=status.HTTP_200_OK)
 
         except DraftBeat.DoesNotExist:
-            return Response({"error": "DraftBeat not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "DraftBeat not found or user unauthorized"}, status=status.HTTP_404_NOT_FOUND)
 
-        
-   
-            
-    
-   
-    def get_queryset(self):
-        """Récupérer uniquement les drafts de l'utilisateur connecté."""
-        return DraftBeat.objects.filter(user=self.request.user)
-
-    def perform_create(self, serializer):
-        """Créer un draft en liant l'utilisateur."""
-        serializer.save(user=self.request.user)
 
 
 
@@ -397,99 +351,115 @@ class DraftBeatDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
+from django.db import transaction
+from .models import DraftBeat, Beat
+from .serializers import BeatActionSerializer
 
 class FinalizeDraftView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def get_required_audio_formats(self, licenses):
+        """
+        Retourne les formats audio requis en fonction des types de fichiers associés aux licences.
+        """
+        all_formats = ['mp3', 'wav', 'flac', 'ogg', 'aac', 'alac', 'zip']  # Pas de '.' ici
+        license_file_types = set()
+
+        for license in licenses:
+            print(f"License: {license}, Types de fichiers: {license.license_file_types}")
+
+            if isinstance(license.license_file_types, list):
+                license_file_types.update(license.license_file_types)
+            else:
+                license_file_types.add(license.license_file_types)
+
+        print(f"License File Types: {license_file_types}")
+
+        # Trouver les formats requis en enlevant le '.' dans all_formats pour correspondre avec license_file_types
+        required_formats = [format for format in all_formats if format in license_file_types]
+
+        print(f"Required Formats: {required_formats}")
+
+        return required_formats
+
+
     def post(self, request, draft_id):
-        """Convertir un brouillon en Beat avec Tracks et Licenses."""
+        """Convertir un brouillon en Beat avec Licenses."""
         try:
             draft = DraftBeat.objects.get(id=draft_id, user=request.user)
         except DraftBeat.DoesNotExist:
             return Response({"error": "Brouillon non trouvé"}, status=status.HTTP_404_NOT_FOUND)
 
-        licenses_data = draft.licenses.all() # Licenses envoyées dans la requête
-        co_artists_data = draft.co_artists.all()  # Co-artistes envoyés dans la requête
-        tracks_data = draft.tracks.all()  # Récupérer tous les tracks associés au brouillon
+        licenses_data = draft.licenses.all()
+        co_artists_data = draft.co_artists.all()
         user = request.user
 
+        # Gérer les formats audio requis en fonction des licences
+        required_formats = self.get_required_audio_formats(licenses_data)
 
-        # Vérification des tracks
-        required_file_types = set()
-        for license_obj in licenses_data:
-            required_file_types.update(license_obj.license_file_types)  # Types de fichiers exigés par la licence
-
-        provided_file_types = {track.file_type for track in tracks_data}
-
-        # Vérifier si tous les types requis sont fournis
-        missing_types = required_file_types - provided_file_types
-        if missing_types:
+        # Vérifier si les formats audio requis sont présents et non nuls dans le brouillon (draft)
+        missing_formats = [
+            format for format in required_formats 
+            if not getattr(draft, format.lstrip('.'), None)  # Si le fichier est None ou vide
+        ]
+        if missing_formats:
             return Response(
-                {"error": f"Les fichiers suivants sont manquants pour respecter les licences: {', '.join(missing_types)}"},
-                status=status.HTTP_400_BAD_REQUEST,
+                {"error": f"Les formats audio suivants sont manquants : {', '.join(missing_formats)}"},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Vérifier qu'aucun fichier non demandé n'est ajouté
-        extra_types = provided_file_types - required_file_types
-        if extra_types:
-            return Response(
-                {"error": f"Les fichiers suivants ne sont pas nécessaires pour cette licence et ne doivent pas être inclus: {', '.join(extra_types)}"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Vérifier que chaque type de fichier est unique
-        file_type_counts = {}
-        for track in tracks_data:
-            if track.file_type in file_type_counts:
+        # Vérifier les formats de fichiers audio dans request.FILES
+        allowed_formats = required_formats + [".mp3", ".wav", ".flac", ".ogg", ".aac", ".alac", ".zip"]
+        for format_key, file in request.FILES.items():
+            file_extension = file.name.split('.')[-1].lower()  # Extraire l'extension du fichier
+            if f".{file_extension}" not in allowed_formats:
                 return Response(
-                    {"error": f"Le fichier '{track.file_type}' est présent en plusieurs exemplaires. Assurez-vous qu'il n'y a pas de doublon."},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    {"error": f"Le format de fichier '{file.name}' n'est pas autorisé. Les formats valides sont : {', '.join(allowed_formats)}."},
+                    status=status.HTTP_400_BAD_REQUEST
                 )
-            file_type_counts[track.file_type] = True
 
-        with transaction.atomic():
-            
-            # 1️⃣ **Création du Beat**
-            beat_data = {
-                "title": draft.title,
-                "bpm": draft.bpm,
-                "key": draft.key,
-                "main_artist": user.id,
-                "cover_image": draft.cover_image,
-                "genre": draft.genre,
-                "is_public": draft.is_public,
-                "hashtags":draft.hashtags,
-            }
+        # Si tout est valide, procéder à la création du Beat
+        beat_data = {
+            "title": draft.title,
+            "bpm": draft.bpm,
+            "key": draft.key,
+            "main_artist": user.id,
+            "cover_image": draft.cover_image,
+            "genre": draft.genre,
+            "hashtags": [],  # Les hashtags seront ajoutés plus bas
+        }
 
-            # Passer le contexte 'request' au sérialiseur
-            beat_serializer = BeatActionSerializer(data=beat_data, context={'request': request})  # Passer le 'request' ici
-            if not beat_serializer.is_valid():
-                return Response({"errors": beat_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-            beat = beat_serializer.save()
+        # Ajouter les fichiers audio requis dans le beat_data
+        for format in required_formats:
+            format_key = format.lstrip('.')  # Retirer le point pour avoir une clé valide
+            if hasattr(draft, format) and getattr(draft, format):  # Vérifier si le fichier est présent et non nul
+                beat_data[format_key] = getattr(draft, format)
 
-            # 2️⃣ **Association des Licenses**
-            beat.licenses.set(licenses_data)  # Associer les licenses au Beat
+        # Création du Beat via le sérialiseur
+        beat_serializer = BeatActionSerializer(data=beat_data, context={'request': request})
+        if not beat_serializer.is_valid():
+            return Response({"errors": beat_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        beat = beat_serializer.save()
 
-            # 3️⃣ **Association des Co-artistes**
-            beat.co_artists.set(co_artists_data)  # Associer les co-artistes au Beat
+        # Association des Licenses, Co-artistes et Hashtags
+        beat.licenses.set(licenses_data)
+        beat.co_artists.set(co_artists_data)
+        beat.hashtags.set([])  # Si des hashtags sont ajoutés plus bas, les ajouter ici.
 
-            # 4️⃣ **Association des Tracks**
-            beat.tracks.set(tracks_data)  # Associer directement les tracks au Beat
-            if beat.tracks.exists():
-                draft.tracks.all().delete()
+        # Suppression du brouillon
+        draft.delete()
 
-            # ✅ Suppression du brouillon
-            draft.delete()
+        return Response(BeatActionSerializer(beat, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
-            # Retourner les données du Beat créé
-            return Response(BeatActionSerializer(beat, context={'request': request}).data, status=status.HTTP_201_CREATED)  # Passer le 'request' ici aussi
 
-        return Response({"error": "Une erreur inconnue s'est produite."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
     
 
-class CreateConditionsView(generics.CreateAPIView):
-    queryset = Conditions.objects.all()
-    serializer_class = ConditionsSerializer
 
 
 

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import Beat, License, BeatTrack,DraftBeat,CollaborationInvite
+from .models import Beat, License,DraftBeat,CollaborationInvite
 
 # ✅ Inline pour gérer les licences directement dans l'admin du Beat
 class LicenseInline(admin.TabularInline):  
@@ -24,12 +24,12 @@ class LicenseInline(admin.TabularInline):
 # ✅ Personnalisation de l'affichage du Beat
 @admin.register(Beat)
 class BeatAdmin(admin.ModelAdmin):
-    list_display = ('title', 'main_artist', 'display_co_artists', 'cheapest_license', "main_track", "duration", 'is_public', 'is_sold', 'created_at')
-    list_filter = ('is_public', 'is_sold', 'created_at')
+    list_display = ('title', 'main_artist', 'display_co_artists', 'cheapest_license', "duration", 'is_sold', 'created_at',"audio_file")
+    list_filter = ('is_sold', 'created_at')
     search_fields = ('title', 'main_artist__username', 'co_artists__username')
     readonly_fields = ('cheapest_license',)
     actions = ['apply_discount', 'mark_as_sold']
-    filter_horizontal = ("licenses", "tracks")  # ✅ Permet de gérer les licences et tracks directement dans l'admin
+    filter_horizontal = ("licenses",)  # ✅ Permet de gérer les licences directement dans l'admin
 
     def cheapest_license(self, obj):
         """Retourne le prix de la licence la moins chère associée au beat."""
@@ -57,22 +57,10 @@ class BeatAdmin(admin.ModelAdmin):
         self.message_user(request, "Les beats sélectionnés ont été marqués comme vendus.")
     mark_as_sold.short_description = "Marquer comme vendu (exclusif)"
 
-    def toggle_visibility(self, request, queryset):
-        """Action admin pour rendre les beats publics ou privés."""
-        for beat in queryset:
-            beat.is_public = not beat.is_public
-            beat.save()
-        self.message_user(request, "La visibilité des beats sélectionnés a été mise à jour.")
-    toggle_visibility.short_description = "Basculer visibilité (public/privé)"
+    
 
 
-@admin.register(BeatTrack)
-class BeatTrackAdmin(admin.ModelAdmin):
-    list_display = ("title", "get_beats", "duration", "audio_file")
 
-    def get_beats(self, obj):
-        return ", ".join([beat.title for beat in obj.beat.all()])
-    get_beats.short_description = "Beats associés"
 
     
 
@@ -100,10 +88,10 @@ def update_beat_audio(sender, instance, **kwargs):
 
 
 class DraftBeatAdmin(admin.ModelAdmin):
-    list_display = ('title', 'user', 'bpm', 'key', 'genre', 'is_public', 'created_at', 'updated_at',"audio_file")
-    list_filter = ('is_public', 'created_at', 'updated_at', 'user')
+    list_display = ('title', 'user', 'bpm', 'key', 'genre', 'created_at', 'updated_at')
+    list_filter = ('created_at', 'updated_at', 'user')
     search_fields = ('title', 'user__username', 'genre', 'bpm')
-    filter_horizontal = ('licenses', 'tracks', 'co_artists')
+    filter_horizontal = ('licenses', 'co_artists')
     readonly_fields = ('created_at', 'updated_at')
 
     # Pour afficher l'image de couverture dans l'admin
@@ -114,12 +102,12 @@ class DraftBeatAdmin(admin.ModelAdmin):
     cover_image_preview.short_description = 'Cover Image'
 
     # Permet d'afficher l'image de couverture dans la liste
-    list_display = ('title', 'user', 'bpm', 'key', 'cover_image_preview',"audio_file", 'is_public', 'created_at', 'updated_at')
+    list_display = ('title', 'user', 'bpm', 'key', 'cover_image_preview','created_at', 'updated_at')
 
     # Personnaliser le formulaire d'édition si nécessaire
     fieldsets = (
         (None, {
-            'fields': ('title', 'user', 'bpm', 'key', 'genre', 'cover_image',"audio_file", 'is_public', 'co_artists', 'licenses', 'tracks')
+            'fields': ('title', 'user', 'bpm', 'key', 'genre', 'cover_image', 'co_artists', 'licenses')
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),
