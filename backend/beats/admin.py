@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import Beat, License, BeatTrack,DraftBeat
+from .models import Beat, License, BeatTrack,DraftBeat,CollaborationInvite
 
 # ✅ Inline pour gérer les licences directement dans l'admin du Beat
 class LicenseInline(admin.TabularInline):  
@@ -129,3 +129,27 @@ class DraftBeatAdmin(admin.ModelAdmin):
 
 # Enregistrer le modèle et l'admin
 admin.site.register(DraftBeat, DraftBeatAdmin)
+
+
+@admin.register(CollaborationInvite)
+class CollaborationInviteAdmin(admin.ModelAdmin):
+    list_display = ('sender', 'recipient', 'draftbeat', 'status', 'created_at')
+    search_fields = ('sender__username', 'recipient__username', 'draftbeat__title', 'status')
+    list_filter = ('status', 'created_at')
+    readonly_fields = ('created_at',)
+
+    def accept_invite(self, request, queryset):
+        """Action admin pour accepter plusieurs invitations."""
+        for invite in queryset:
+            invite.accept()
+        self.message_user(request, "Les invitations sélectionnées ont été acceptées.")
+    accept_invite.short_description = "Accepter les invitations sélectionnées"
+
+    def refuse_invite(self, request, queryset):
+        """Action admin pour refuser plusieurs invitations."""
+        for invite in queryset:
+            invite.refuse()
+        self.message_user(request, "Les invitations sélectionnées ont été refusées.")
+    refuse_invite.short_description = "Refuser les invitations sélectionnées"
+
+    actions = [accept_invite, refuse_invite]

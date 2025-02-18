@@ -11,6 +11,8 @@ from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework.decorators import action
 from rest_framework import viewsets, status
 from django.db import transaction
+from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.exceptions import ValidationError   
 import json
 from rest_framework.generics import ListAPIView
 from .permissions import AllowAnyGetAuthenticatedElse
@@ -190,29 +192,52 @@ class BeatTrackViewSet(viewsets.ModelViewSet):
 from django.http import JsonResponse
 
 
-class UserTracksView(APIView):
+class UserTracksView(APIView, LimitOffsetPagination):
     """
     Vue pour récupérer les beats associés à un utilisateur authentifié.
+    Ajout du filtrage des champs et de la pagination.
     """
 
     permission_classes = [IsAuthenticated]
+    default_limit = 10  # Nombre d'éléments par défaut
 
     def get(self, request, *args, **kwargs):
-        # Récupérer l'utilisateur authentifié
         user = request.user
         
-        # Récupérer toutes les licenses de l'utilisateur
+        # Récupérer toutes les licences de l'utilisateur
         licenses = License.objects.filter(user=user)
         
-        # Récupérer tous les BeatTracks associés à ces licenses
-        tracks = BeatTrack.objects.filter(licenses__in=licenses)
+        # Récupérer tous les BeatTracks associés aux licences
+        tracks = BeatTrack.objects.filter(licenses__in=licenses).distinct()
+
+        # Pagination
+        results = self.paginate_queryset(tracks, request, view=self)
         
-        # Sérialiser les BeatTracks
-        serializer = BeatTrackSerializer(tracks, many=True)
-        
-        # Retourner la réponse avec les données sérialisées
-        return Response(serializer.data)
-    
+        # Sérialiser les données
+        serializer = BeatTrackSerializer(results, many=True)
+
+        # Filtrage des champs si "fields" est spécifié
+        fields_param = request.query_params.get("fields")
+        if fields_param:
+            requested_fields = set(fields_param.split(","))
+            
+            # Récupérer les champs du serializer en se basant sur une instance unique
+            serializer_instance = BeatTrackSerializer()
+            allowed_fields = set(serializer_instance.fields.keys())
+
+            valid_fields = requested_fields & allowed_fields
+
+            if not valid_fields:
+                raise ValidationError({"error": "Aucun champ valide spécifié."})
+
+            serialized_data = [
+                {field: track[field] for field in valid_fields} for track in serializer.data
+            ]
+        else:
+            serialized_data = serializer.data
+
+        # Retourner les données paginées avec les champs sélectionnés
+        return self.get_paginated_response(serialized_data)
 
 class BeatCommentViewSet(viewsets.ModelViewSet):
     serializer_class = BeatCommentSerializer

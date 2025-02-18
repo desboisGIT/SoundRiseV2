@@ -20,7 +20,7 @@ class Beat(models.Model):
     key = models.CharField(max_length=10, blank=True, null=True)  # Clé musicale (ex: C#m, F#)
     genre = models.CharField(max_length=100, blank=True, null=True)  # Genre du beat (Hip-Hop, Trap, Afrobeat...)
     hashtags = models.ManyToManyField("Hashtag", related_name="beats", blank=True)
-
+    is_free =models.BooleanField(default=True, help_text="Définit si le beat est gratuiit ou payant.")  # Visibilité
     main_track = models.ForeignKey('BeatTrack', on_delete=models.SET_NULL, null=True, blank=True, related_name='main_beats')  # Piste principale sélectionnée
     duration = models.FloatField(blank=True, null=True, help_text="Durée de la piste sélectionnée en secondes")  # Durée de la piste sélectionnée
     audio_file = models.FileField(upload_to="beats/audio_files/", blank=True, null=True)  # Fichier sélectionné automatiquement
@@ -350,3 +350,24 @@ class Hashtag(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class CollaborationInvite(models.Model):
+    sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="sent_invites")
+    recipient = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="received_invites")
+    draftbeat = models.ForeignKey(DraftBeat, on_delete=models.CASCADE)
+    status = models.CharField(
+        choices=[('pending', 'Pending'), ('accepted', 'Accepted'), ('refused', 'Refused'), ('expired', 'Expired')],
+        default='pending',
+        max_length=20
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def accept(self):
+        self.status = 'accepted'
+        self.save()
+        self.beat.collaborators.add(self.recipient)
+
+    def refuse(self):
+        self.status = 'refused'
+        self.save()

@@ -143,15 +143,36 @@ class DraftBeatSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def create(self, validated_data):
-        hashtag_names = validated_data.pop("hashtag_names", [])
-        draft = DraftBeat.objects.create(**validated_data)
+        print(validated_data)  # Débug : voir quelles données sont reçues
 
-        # Ajouter les hashtags existants ou les créer
-        for name in hashtag_names:
-            hashtag, created = Hashtag.objects.get_or_create(name=name.lower())
-            draft.hashtags.add(hashtag)
+        hashtag_names = validated_data.pop("hashtag_names", [])
+        hashtags_data = validated_data.pop("hashtags", [])  
+        tracks_data = validated_data.pop("tracks", [])  # Retirer tracks s'il existe
+        licenses_data = validated_data.pop("licenses", [])  # Retirer licenses s'il existe
+        co_artists_data = validated_data.pop("co_artists", [])  # Retirer co_artists s'il existe
+
+        draft = DraftBeat.objects.create(**validated_data)  # Créer l'objet sans ManyToMany
+
+        if hashtag_names:
+            hashtags = [Hashtag.objects.get_or_create(name=name.lower())[0] for name in hashtag_names]
+            draft.hashtags.add(*hashtags)
+
+        if hashtags_data:
+            draft.hashtags.add(*hashtags_data)
+
+        if tracks_data:
+            draft.tracks.set(tracks_data)  # Ajouter correctement les tracks
+
+        if licenses_data:
+            draft.licenses.set(licenses_data)  # Ajouter correctement les licenses
+
+        if co_artists_data:
+            draft.co_artists.set(co_artists_data)  # Ajouter correctement les co-artistes
 
         return draft
+
+
+
 
 
 class ConditionsSerializer(serializers.ModelSerializer):
