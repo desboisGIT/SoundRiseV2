@@ -176,12 +176,54 @@ class LicenseViewSet(viewsets.ModelViewSet):
 
         
 
+
 class UserLicenseListView(ListAPIView):
+    """
+    Vue pour récupérer la liste des licences associées à l'utilisateur authentifié.
+    Ajout du filtrage des champs et de la pagination.
+    """
+
     serializer_class = LicenseSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = LimitOffsetPagination  # Utilisation correcte de la pagination
 
     def get_queryset(self):
         return License.objects.filter(user=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+
+        # Appliquer la pagination correctement
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+        else:
+            serializer = self.get_serializer(queryset, many=True)
+
+        # Gestion du filtrage des champs
+        fields_param = request.query_params.get("fields")
+        if fields_param:
+            requested_fields = set(fields_param.split(","))
+
+            # Obtenir les champs valides du serializer
+            serializer_instance = self.get_serializer()
+            allowed_fields = set(serializer_instance.fields.keys())
+
+            valid_fields = requested_fields & allowed_fields
+
+            if not valid_fields:
+                raise ValidationError({"error": "Aucun champ valide spécifié."})
+
+            serialized_data = [
+                {field: item[field] for field in valid_fields} for item in serializer.data
+            ]
+        else:
+            serialized_data = serializer.data
+
+        # Retour des données paginées avec les champs sélectionnés
+        return self.get_paginated_response(serialized_data) if page is not None else Response(serialized_data)
+
     
 
 class BeatTrackViewSet(viewsets.ModelViewSet):

@@ -1,8 +1,8 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
-from core.models import CustomUser
+
 from channels.db import database_sync_to_async
-from .models import DraftBeat, CollaborationInvite
+
 from django.db import close_old_connections
 from asgiref.sync import sync_to_async
 
@@ -47,6 +47,7 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def get_user(self, user_id):
+        from core.models import CustomUser
         """ Récupérer un utilisateur de manière asynchrone """
         try:
             return CustomUser.objects.get(id=user_id)
@@ -54,7 +55,9 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
             return None
 
     @database_sync_to_async
+    
     def get_draftbeat(self, draftbeat_id):
+        from .models import DraftBeat
         """ Récupérer un DraftBeat de manière asynchrone """
         try:
             return DraftBeat.objects.get(id=draftbeat_id)
@@ -63,11 +66,13 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def create_invite(self, sender, recipient, draftbeat):
+        from .models import CollaborationInvite
         """ Créer une invitation """
         return CollaborationInvite.objects.create(sender=sender, recipient=recipient, draftbeat=draftbeat)
 
     @database_sync_to_async
     def get_invite(self, invite_id, recipient):
+        from .models import CollaborationInvite
         """ Récupérer une invitation """
         try:
             return CollaborationInvite.objects.get(id=invite_id, recipient=recipient, status="pending")
@@ -76,6 +81,7 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def update_invite_status(self, invite_id, status):
+        from .models import CollaborationInvite
         """ Mettre à jour le statut d'une invitation """
         try:
             invite = CollaborationInvite.objects.get(id=invite_id)
@@ -87,6 +93,8 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def add_collaborator(self, draftbeat_id, user_id):
+        from .models import DraftBeat
+        from core.models import CustomUser
         """ Ajouter un collaborateur à un DraftBeat """
         try:
             draftbeat = DraftBeat.objects.get(id=draftbeat_id)
@@ -99,11 +107,25 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def invite_exists(self, draftbeat, recipient):
+        from .models import CollaborationInvite
         """ Vérifier si une invitation existe déjà """
         return CollaborationInvite.objects.filter(draftbeat=draftbeat, recipient=recipient, status="pending").exists()
 
     @database_sync_to_async
+    def serialize_invites(self, invites):
+        return [
+            {
+                "invite_id": i.id, 
+                "recipient": i.recipient.username,  
+                "status": i.status
+            } 
+            for i in invites
+        ]
+
+
+    @database_sync_to_async
     def get_invites_for_draftbeat(self, draftbeat):
+        from .models import CollaborationInvite
         """ Récupérer toutes les invitations pour un DraftBeat """
         return list(CollaborationInvite.objects.filter(draftbeat=draftbeat))
 
@@ -146,7 +168,9 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
     from asgiref.sync import sync_to_async
 
     async def accept_invite(self, data):
+        from .models import CollaborationInvite
         """ Accepter une invitation """
+        user = self.scope["user"]
         invite_id = data.get("invite_id")
 
         # Récupérer l'invitation de manière synchrone
@@ -154,6 +178,11 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
 
         if not invite:
             return await self.send(json.dumps({"error": "Invitation introuvable"}))
+        
+        # Vérifier si l'utilisateur est bien le destinataire de l'invitation
+        if invite.recipient_id != user.id:
+            return await self.send(json.dumps({"error": "Accès refusé"}))
+
 
         # Mise à jour du statut de l'invitation
         await sync_to_async(lambda: CollaborationInvite.objects.filter(id=invite.id).update(status="accepted"))()
@@ -177,7 +206,9 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
 
 
     async def refuse_invite(self, data):
+        from .models import CollaborationInvite
         """ Refuser une invitation """
+        user = self.scope["user"]
         invite_id = data.get("invite_id")
 
         # Récupérer l'invitation en mode synchrone
@@ -185,6 +216,11 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
 
         if not invite:
             return await self.send(json.dumps({"error": "Invitation introuvable"}))
+        
+        # Vérifier si l'utilisateur est bien le destinataire de l'invitation
+        if invite.recipient_id != user.id:
+            return await self.send(json.dumps({"error": "Accès refusé"}))
+
 
         # Mise à jour du statut de l'invitation
         await sync_to_async(lambda: CollaborationInvite.objects.filter(id=invite.id).update(status="refused"))()
@@ -209,22 +245,20 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
 
     async def get_invite_status(self, data):
         """ Récupérer le statut des invitations pour un DraftBeat """
+        user = self.scope["user"]
         draftbeat_id = data.get("draftbeat_id")
 
         draftbeat = await self.get_draftbeat(draftbeat_id)  # Supposé asynchrone
         if not draftbeat:
             return await self.send(json.dumps({"error": "DraftBeat introuvable"}))
+        
+        if draftbeat.user_id != user.id:  # Comparer directement les IDs pour éviter les requêtes inutiles
+            return await self.send(json.dumps({"error": "Accès refusé"}))
+
 
         invites = await self.get_invites_for_draftbeat(draftbeat)  # Maintenant bien géré en async
 
-        invite_status_list = [
-            {
-                "invite_id": i.id, 
-                "recipient": i.recipient.username,  # Cette ligne risque d'être bloquante
-                "status": i.status
-            } 
-            for i in invites
-        ]
+        invite_status_list = await self.serialize_invites(invites)  
 
         await self.send(json.dumps({"invite_status": invite_status_list}))
 

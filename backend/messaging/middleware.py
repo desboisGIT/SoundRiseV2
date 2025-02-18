@@ -1,17 +1,22 @@
 # middleware.py
 
-from jwt import decode as jwt_decode
-from rest_framework_simplejwt.tokens import UntypedToken
-from django.contrib.auth.models import AnonymousUser
+
+
+
 from channels.db import database_sync_to_async
 from channels.middleware import BaseMiddleware
-from urllib.parse import parse_qs
-from rest_framework_simplejwt.exceptions import InvalidToken
-from core.models import CustomUser
+
+
+
 
 
 @database_sync_to_async
 def get_user_from_jwt(token):
+    from jwt import decode as jwt_decode
+    from django.contrib.auth.models import AnonymousUser
+    from core.models import CustomUser
+    from rest_framework_simplejwt.tokens import UntypedToken
+    from rest_framework_simplejwt.exceptions import InvalidToken
     try:
         UntypedToken(token)  # Valider le token
         decoded_data = jwt_decode(token, options={"verify_signature": False})
@@ -21,7 +26,10 @@ def get_user_from_jwt(token):
         return AnonymousUser()
 
 class JWTAuthMiddleware(BaseMiddleware):
+    
     async def __call__(self, scope, receive, send):
+        from django.contrib.auth.models import AnonymousUser
+        from urllib.parse import parse_qs
         query_string = scope.get("query_string", b"").decode("utf-8")
         params = parse_qs(query_string)
         token = params.get("token", [None])[0]

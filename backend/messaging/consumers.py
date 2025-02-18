@@ -3,8 +3,8 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from .models import Conversation, Invitation, Message
-from core.models import CustomUser
+
+
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -49,11 +49,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def get_conversation(self, conversation_id):
+        from .models import Conversation
         """Récupérer la conversation de manière asynchrone"""
         return Conversation.objects.get(id=conversation_id)
 
     @database_sync_to_async
     def create_message(self, conversation, sender, receiver, content):
+        from .models import Message
         """Créer un message dans la base de données"""
         return Message.objects.create(
             conversation=conversation,
@@ -63,6 +65,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
     async def send_message(self, conversation_id, sender, receiver_id, content):
+        from .models import Conversation
         """Envoie un message dans une conversation existante."""
         try:
             conversation = await self.get_conversation(conversation_id)
@@ -117,8 +120,14 @@ class InvitationConsumer(AsyncWebsocketConsumer):
         if data.get('action') == 'send_invitation':
             receiver_id = data.get('receiver_id')
             message = data.get('message', 'Nouvelle invitation')
-            print(f"Envoi d'une invitation à l'utilisateur {receiver_id} avec le message : {message}")
 
+            existing_invitation = await self.check_existing_invitation(receiver_id)
+            
+            
+            if existing_invitation:
+                print(f"Invitation déjà existante pour {receiver_id}, action annulée.")
+                return
+            
             # Crée l'invitation en base de données
             await self.create_invitation(receiver_id, message)
 
@@ -129,7 +138,20 @@ class InvitationConsumer(AsyncWebsocketConsumer):
             invitation_id = data.get('invitation_id')
             await self.accept_invitation(invitation_id)
 
+    async def check_existing_invitation(self, receiver_id):
+        
+        """Vérifie si une invitation existe déjà pour ce destinataire."""
+        from .models import Invitation  # Importe ton modèle
+
+        existing_invitation = await database_sync_to_async(
+            lambda: Invitation.objects.filter(sender=self.scope['user'], receiver_id=receiver_id, status='pending').exists()
+        )()
+
+        return existing_invitation
+
+
     async def send_invitation(self, receiver_id, message):
+        print("q")
         """Envoie une invitation en direct au destinataire via WebSocket."""
         await self.channel_layer.group_send(
             f"user_{receiver_id}",
@@ -151,6 +173,8 @@ class InvitationConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def create_invitation(self, receiver_id, message):
+        from .models import Invitation
+        from core.models import CustomUser
         """Créer une invitation dans la base de données."""
         try:
             receiver = CustomUser.objects.get(id=receiver_id)
