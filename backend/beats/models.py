@@ -5,6 +5,8 @@ from django.dispatch import receiver
 from django.utils.timezone import now
 from mutagen import File
 from multiselectfield.db.fields import MultiSelectField
+from django.db.models.signals import pre_delete
+from django.core.exceptions import ValidationError
 
 
 
@@ -153,6 +155,9 @@ class BeatTrack(models.Model):
 
     def save(self, *args, **kwargs):
         # Remplir automatiquement le type de fichier
+        if BeatTrack.objects.filter(beat=self.beat, file_type=self.file_type).exists():
+            raise ValidationError(f"Le type de fichier '{self.file_type}' existe déjà pour ce Beat.")
+        
         if self.audio_file:
             self.file_type = f".{self.audio_file.name.split('.')[-1]}"
             
@@ -178,6 +183,11 @@ class BeatTrack(models.Model):
 
     def __str__(self):
         return f"{self.title} "
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['beat', 'file_type'], name='unique_beat_filetype')
+        ]
 
 
 class License(models.Model):
@@ -325,6 +335,37 @@ class DraftBeat(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def validate_tracks(self):
+        """ Vérifie que les tracks correspondent aux licenses demandées """
+        required_file_types = set()
+        for license in self.licenses.all():
+            required_file_types.update(license.license_file_types)
+
+        uploaded_file_types = set(self.tracks.values_list("file_type", flat=True))
+
+        # Vérifier si des fichiers demandés manquent
+        missing_files = required_file_types - uploaded_file_types
+        if missing_files:
+            raise ValidationError(f"Il manque les fichiers suivants : {', '.join(missing_files)}")
+
+        # Vérifier s'il y a des fichiers uploadés en trop
+        extra_files = uploaded_file_types - required_file_types
+        if extra_files:
+            raise ValidationError(f"Ces fichiers ne sont pas demandés par la license : {', '.join(extra_files)}")
+
+        # Vérifier les doublons (pas deux fichiers du même type)
+        if len(uploaded_file_types) != len(self.tracks.all()):
+            raise ValidationError("Vous ne pouvez pas uploader deux fichiers du même type.")
+        
+    def save(self, *args, **kwargs):
+        self.validate_tracks()  # Lancer la validation avant la sauvegarde
+        super().save(*args, **kwargs)
+
+
+
+@receiver(pre_delete, sender=DraftBeat)
+def delete_tracks_with_draft(sender, instance, **kwargs):
+    instance.tracks.all().delete()  
 
 class Conditions(models.Model):
     """Modèle pour stocker les conditions associéés aux licences."""
