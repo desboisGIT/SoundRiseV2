@@ -8,17 +8,31 @@ from channels.db import database_sync_to_async
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        """Connecte l'utilisateur au WebSocket et le joint à son groupe utilisateur."""
-        self.user = self.scope['user']
-        self.room_name = f'user_{self.user.id}'
+        # Get the conversation ID from the URL parameters (this is now conversation_id, not room_name)
+        self.conversation_id = self.scope['url_route']['kwargs']['conversation_id']
+        self.user = self.scope['user']  # Vous pouvez l'utiliser ensuite
+        # Generate the room group name based on the conversation ID
+        self.room_group_name = f'chat_{self.conversation_id}'
 
-        # Rejoindre le groupe de l'utilisateur
+        # Get the conversation and its messages asynchronously
+        conversation = await self.get_conversation(self.conversation_id)
+        messages = await self.get_messages(self.conversation_id)
+
+        # Accept the WebSocket connection
+        await self.accept()
+
+        # Send the initial messages to the WebSocket client
+        await self.send(text_data=json.dumps({
+        'messages': messages,
+        }, ensure_ascii=False))  # Empêche l'échappement des caractères spéciaux
+
+
+        # Join the room group (this allows the server to send messages to this room)
         await self.channel_layer.group_add(
-            self.room_name,
+            f'user_{self.user.id}',  # L'utilisateur doit être ajouté au groupe correspondant à son ID
             self.channel_name
         )
 
-        await self.accept()
 
     async def disconnect(self, close_code):
         """Déconnecte l'utilisateur du WebSocket et quitte le groupe utilisateur."""
@@ -28,7 +42,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
     async def receive(self, text_data):
-        print(f"Message reçu : {text_data}")  # Vérifie si un message est reçu
         data = json.loads(text_data)
         action = data.get("action")
 
@@ -38,9 +51,23 @@ class ChatConsumer(AsyncWebsocketConsumer):
             content = data["content"]
 
             sender = self.user
-
+            print("send")
             # Envoyer le message
-            await self.send_message(conversation_id, sender, receiver_id, content)
+            message = await self.send_message(conversation_id, sender, receiver_id, content)
+            if message is not None:
+                # Marquer le message comme vu
+                await self.mark_message_as_seen(message.id)
+
+                # Envoyer la notification de message vu
+                await self.channel_layer.group_send(
+                    f'user_{sender.id}',  # L'expéditeur sera notifié
+                    {
+                        'type': 'message_seen',
+                        'message_id': message.id,
+                    }
+                )
+            else:
+                print("Message is None, cannot mark as seen.")
             
     @database_sync_to_async
     def get_receiver(self, conversation, receiver_id):
@@ -49,9 +76,21 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def get_conversation(self, conversation_id):
-        from .models import Conversation
-        """Récupérer la conversation de manière asynchrone"""
+        from .models import Conversation  # Assuming Conversation and Message models exist
         return Conversation.objects.get(id=conversation_id)
+
+    # Helper method to fetch the messages for a conversation asynchronously
+    @database_sync_to_async
+    def get_messages(self, conversation_id):
+        from datetime import datetime
+        from .models import Message
+        messages = Message.objects.filter(conversation_id=conversation_id).values('sender__username', 'content', 'timestamp')
+
+        # Format the 'timestamp' field as a string (ISO 8601 format)
+        for message in messages:
+            message['timestamp'] = message['timestamp'].isoformat()  # Convert datetime to string
+        
+        return list(messages)
 
     @database_sync_to_async
     def create_message(self, conversation, sender, receiver, content):
@@ -63,6 +102,35 @@ class ChatConsumer(AsyncWebsocketConsumer):
             receiver=receiver,
             content=content
         )
+    
+    @database_sync_to_async
+    def mark_message_as_seen(message_id):
+        from .models import Message
+        try:
+            message = Message.objects.get(id=message_id)
+            message.is_read = True
+            message.save()
+            return True
+        except Message.DoesNotExist:
+            return False
+
+    # Notifier le récepteur lorsque le message a été vu
+    async def message_seen(self, event):
+        """Notifie le récepteur que le message a été vu"""
+        message_id = event['message_id']
+        print(f"Message {message_id} has been seen by the recipient.")
+        
+        # Vous pouvez envoyer un événement pour mettre à jour l'interface utilisateur en temps réel
+        await self.send(text_data=json.dumps({
+            'action': 'message_seen',
+            'message_id': message_id
+        })) 
+
+    @database_sync_to_async
+    def get_unseen_messages(self, user):
+        from .models import Message
+        # Récupérer les messages non vus pour l'utilisateur
+        return Message.objects.filter(receiver=user, seen=False)
 
     async def send_message(self, conversation_id, sender, receiver_id, content):
         from .models import Conversation
@@ -72,16 +140,26 @@ class ChatConsumer(AsyncWebsocketConsumer):
             receiver = await self.get_receiver(conversation, receiver_id)
             message = await self.create_message(conversation, sender, receiver, content)
 
+            if receiver_id == sender.id : 
+                await self.send(text_data=json.dumps({
+                    'error': 'Impossible de se parler à soi même'
+                }))
+                return  # Exit early if the sender is trying to message themselves
+
+            # Format the message for sending to the recipient
+            message_data = {
+                'sender': sender.username,
+                'content': message.content,
+                'timestamp': str(message.timestamp)
+            }
+
             # Envoyer la notification au destinataire
+            print(f"Sending message to group 'user_{receiver_id}': {message_data}")
             await self.channel_layer.group_send(
                 f'user_{receiver_id}',
                 {
                     'type': 'new_message',
-                    'message': {
-                        'sender': sender.username,
-                        'content': message.content,
-                        'timestamp': str(message.timestamp)
-                    }
+                    'message': message_data
                 }
             )
         except Conversation.DoesNotExist:
@@ -91,7 +169,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def new_message(self, event):
         """Gère la réception d'un nouveau message et l'envoie au client WebSocket."""
-        await self.send(text_data=json.dumps(event['message']))
+        print(f"New message event: {event}")
+        await self.send(text_data=json.dumps(event['message'], ensure_ascii=False))
+
 
 
 
