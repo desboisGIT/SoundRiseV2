@@ -1,18 +1,32 @@
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/user/";
-const REFRESH_URL = "http://127.0.0.1:8000/api/auth/token/refresh/";
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/user/";
+const REFRESH_URL = "http://127.0.0.1:8000/api/auth/refresh/";
 
 /**
- * Fetch filtered users from the API.
+ * Custom request wrapper that retries a request after refreshing the token
+ * if it receives a 401 error.
  *
- * @param {Object} options - The options for filtering.
- * @param {string[]} [options.fields=["profile_picture", "username", "id"]] - The fields to include in the response.
- * @param {number} [options.limit=50] - The maximum number of users to return.
- * @param {number} [options.offset=0] - The offset for pagination.
- * @param {string} [options.username=""] - A username filter (optional).
- * @returns {Promise<Object>} The response data from the API.
+ * @param {Function} requestFn - A function returning an Axios promise.
+ * @returns {Promise} The resolved response from Axios.
  */
+export const makeAuthenticatedRequest = async (requestFn) => {
+  try {
+    return await requestFn();
+  } catch (error) {
+    if (error.response?.status === 401) {
+      console.warn("Access token expired, refreshing...");
+      const newAccess = await refreshAccessToken();
+      if (newAccess) {
+        // Retry the request after refreshing the token.
+        return await requestFn();
+      }
+    }
+    throw error;
+  }
+};
+
+// Fetch filtered users from the API.
 export const fetchFilteredUsers = async (options = {}) => {
   const { fields = ["profile_picture", "username", "id"], limit = 50, offset = 0, username = "" } = options;
 
@@ -27,7 +41,7 @@ export const fetchFilteredUsers = async (options = {}) => {
   const url = `http://127.0.0.1:8000/api/users/filter/?${params.toString()}`;
 
   try {
-    const response = await axios.get(url);
+    const response = await makeAuthenticatedRequest(() => axios.get(url));
     return response.data;
   } catch (error) {
     console.error("Error fetching filtered users:", error);
@@ -35,11 +49,11 @@ export const fetchFilteredUsers = async (options = {}) => {
   }
 };
 
-// Updated refreshAccessToken: relies on the HttpOnly cookie being sent automatically.
+// Refresh access token using the HttpOnly cookie.
 export const refreshAccessToken = async () => {
   try {
-    // We don't need to pass the refresh token manually – the cookie is sent automatically.
     const response = await axios.post(REFRESH_URL, {}, { withCredentials: true });
+    console.log(response.data);
     localStorage.setItem("access_token", response.data.access);
     return response.data.access;
   } catch (error) {
@@ -48,23 +62,17 @@ export const refreshAccessToken = async () => {
   }
 };
 
+// Get user info.
 export const getUserInfo = async () => {
-  let accessToken = localStorage.getItem("access_token");
+  const token = localStorage.getItem("access_token");
   try {
-    const response = await axios.get(API_URL, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+    const response = await makeAuthenticatedRequest(() =>
+      axios.get(API_URL, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    );
     return response.data;
   } catch (error) {
-    if (error.response?.status === 401) {
-      console.warn("Access token expired, trying to refresh...");
-      accessToken = await refreshAccessToken();
-      if (accessToken) {
-        return getUserInfo();
-      }
-    }
     console.error("Not logged in:", error);
     return null;
   }
@@ -72,15 +80,14 @@ export const getUserInfo = async () => {
 
 const API_URL_ISLOGGEDIN = "http://127.0.0.1:8000/api/user/?fields=is_online";
 export const isLoggedIn = async () => {
-  const accessToken = localStorage.getItem("access_token");
-  if (!accessToken) return false;
-
+  const token = localStorage.getItem("access_token");
+  if (!token) return false;
   try {
-    const response = await axios.get(API_URL_ISLOGGEDIN, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+    const response = await makeAuthenticatedRequest(() =>
+      axios.get(API_URL_ISLOGGEDIN, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    );
     return response.status === 200;
   } catch (error) {
     return false;
@@ -89,18 +96,26 @@ export const isLoggedIn = async () => {
 
 const API_URL_LIST_LICENSE = "http://127.0.0.1:8000/api/beats/licenses/user/";
 export const getLicenseList = async () => {
-  const accessToken = localStorage.getItem("access_token");
-  if (!accessToken) return [];
-
+  const token = localStorage.getItem("access_token");
+  if (!token) return [];
   try {
-    const response = await axios.get(API_URL_LIST_LICENSE, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+    const response = await makeAuthenticatedRequest(() =>
+      axios.get(API_URL_LIST_LICENSE, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    );
     return response.data;
   } catch (error) {
     console.error("Error fetching licenses:", error);
     return [];
   }
+};
+
+export default {
+  makeAuthenticatedRequest,
+  fetchFilteredUsers,
+  refreshAccessToken,
+  getUserInfo,
+  isLoggedIn,
+  getLicenseList,
 };

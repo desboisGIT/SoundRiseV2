@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { GoogleLogin } from "@react-oauth/google";
+import { useNavigate } from "react-router-dom";
 
 const LoginWithGoogle = () => {
+  const navigate = useNavigate();
   const onSuccess = async (response) => {
     const tokenId = response.credential;
 
@@ -31,23 +33,14 @@ const LoginWithGoogle = () => {
     } catch (error) {
       console.error("Error authenticating:", error);
     }
-    //window.location.reload();
+    window.location.reload();
   };
 
   const onFailure = (error) => {
     console.error("Google login failed:", error);
   };
 
-  return (
-    <GoogleLogin
-      onSuccess={onSuccess}
-      onError={onFailure}
-      theme="filled_black"
-      text="continue_with"
-      size="large"
-      width="283"
-    />
-  );
+  return <GoogleLogin onSuccess={onSuccess} onError={onFailure} theme="filled_black" text="continue_with" size="large" width="283" />;
 };
 
 export default LoginWithGoogle;

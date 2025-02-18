@@ -15,6 +15,8 @@ import { NotificationProvider } from "./components/NotificationContext";
 import { AuthProvider, useAuth } from "./components/context/AuthContext"; // Import your Auth context
 import { useNotification } from "./components/NotificationContext";
 import ProfilePage from "./pages/user/ProfilePage";
+import userApi from "./api/user";
+import { logout } from "./api/auth";
 
 import DashboardLayout from "./pages/dashboard/DashBoardLayout";
 import DashBoardLicence from "./pages/dashboard/licences/DashBoardLicence";
@@ -31,8 +33,8 @@ const clientId = "162639459241-vfs3ogmpn0fb9jhva7fhfc18k1qlqqm0.apps.googleuserc
 
 const AppContent = () => {
   const navigate = useNavigate();
-  // Get the global auth state and logout function from the context
-  const { loggedIn, logout } = useAuth();
+  // Get the global auth state from the context
+  const { loggedIn, logoutUser } = useAuth();
   const { addNotification } = useNotification();
 
   const handleNotify = (message, type) => {
@@ -49,6 +51,7 @@ const AppContent = () => {
       "Log Out",
       () => {
         logout(); // Update the auth state immediately.
+        logoutUser();
         handleNotify("Déconnecté", "error");
         axios.defaults.headers.common["Authorization"] = null;
         navigate("/");
@@ -80,7 +83,10 @@ const AppContent = () => {
         rightComponents={
           <>
             {loggedIn ? (
-              <TopBarButtonDropDown title="Accounts" optionList={accountsOptions} position="center" />
+              <>
+                <TopBarButtonDropDown title="Accounts" optionList={accountsOptions} position="center" />
+                <TopBarButton title="Refresh Token" action={() => userApi.refreshAccessToken()} />
+              </>
             ) : (
               <>
                 <TopBarButton title="Log In" action={() => navigate("/login")} />

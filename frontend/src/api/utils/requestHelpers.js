@@ -1,6 +1,6 @@
 // src/api/requestHelpers.js
 import axios from "axios";
-import { refreshAccessToken } from "./user";
+import { refreshAccessToken } from "../user";
 
 export const getAuthHeaders = () => {
   const token = localStorage.getItem("access_token");

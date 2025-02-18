@@ -1,7 +1,7 @@
 // src/api/beats.js
 import axios from "axios";
-import { getAuthHeaders } from "./requestHelpers";
-import { makeAuthenticatedRequest } from "./requestHelpers";
+import { getAuthHeaders } from "./utils/requestHelpers";
+import { makeAuthenticatedRequest } from "./utils/requestHelpers";
 
 //############################################################
 //                          drafts                          //
@@ -30,41 +30,52 @@ import { makeAuthenticatedRequest } from "./requestHelpers";
 const API_URL = "http://127.0.0.1:8000/api/beats/";
 
 // Create Draft: POST /drafts/
-export const createDraft = async () => {
-  const response = await makeAuthenticatedRequest(() =>
-    axios.post(`${API_URL}drafts/`, {}, { headers: getAuthHeaders() })
-  );
+export const createDraft = async (draftData) => {
+  const response = await makeAuthenticatedRequest(() => axios.post(`${API_URL}drafts/`, draftData, { headers: getAuthHeaders() }));
   return response.data;
 };
 
 // Edit Draft: PATCH /drafts/:ID/
 export const editDraft = async (id, updatedData) => {
-  const response = await makeAuthenticatedRequest(() =>
-    axios.patch(`${API_URL}drafts/${id}/`, updatedData, { headers: getAuthHeaders() })
-  );
+  const response = await makeAuthenticatedRequest(() => axios.patch(`${API_URL}drafts/${id}/`, updatedData, { headers: getAuthHeaders() }));
   return response.data;
 };
 
 // Delete Draft: DELETE /drafts/:ID/
 export const deleteDraft = async (id) => {
-  const response = await makeAuthenticatedRequest(() =>
-    axios.delete(`${API_URL}drafts/${id}/`, { headers: getAuthHeaders() })
-  );
+  const response = await makeAuthenticatedRequest(() => axios.delete(`${API_URL}drafts/${id}/`, { headers: getAuthHeaders() }));
   return response.data;
 };
 
 // Publish Draft (Draft --> Beat): POST /finalize-draft/:ID/
 export const finalizeDraft = async (id) => {
-  const response = await makeAuthenticatedRequest(() =>
-    axios.post(`${API_URL}finalize-draft/${id}/`, {}, { headers: getAuthHeaders() })
-  );
+  const response = await makeAuthenticatedRequest(() => axios.post(`${API_URL}finalize-draft/${id}/`, {}, { headers: getAuthHeaders() }));
   return response.data;
 };
 
 // Get All Drafts From The Current User: GET /drafts/user
 export const getUserDrafts = async () => {
-  const response = await makeAuthenticatedRequest(() =>
-    axios.get(`${API_URL}drafts/user`, { headers: getAuthHeaders() })
-  );
+  const response = await makeAuthenticatedRequest(() => axios.get(`${API_URL}drafts/user`, { headers: getAuthHeaders() }));
+  return response.data;
+};
+
+//############################################################
+//                          tracks                          //
+//############################################################
+// Docs
+// Urls:
+//
+//    Create Track:
+//    POST http://127.0.0.1:8000/api/beats/tracks/
+//
+//    Get All Tracks From The Current User:
+//    GET http://127.0.0.1:8000/api/beats/tracks/user/
+//
+//    Get Track :id From The Current User:
+//    DELETE http://127.0.0.1:8000/api/beats/tracks/:ID/
+
+// Create Track: POST /tracks/
+export const createTrack = async (trackData) => {
+  const response = await makeAuthenticatedRequest(() => axios.post(`${API_URL}tracks/`, trackData, { headers: getAuthHeaders() }));
   return response.data;
 };

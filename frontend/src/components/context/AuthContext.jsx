@@ -38,14 +38,14 @@ export const AuthProvider = ({ children }) => {
     // Optionally, you could immediately fetch user info here as well
   };
 
-  const logout = () => {
+  const logoutUser = () => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("user");
     setUser(null);
     setLoggedIn(false);
   };
 
-  return <AuthContext.Provider value={{ loggedIn, user, login, logout, setUser }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ loggedIn, user, login, logoutUser, setUser }}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => useContext(AuthContext);
