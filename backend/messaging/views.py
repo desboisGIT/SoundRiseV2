@@ -1,43 +1,8 @@
 # views.py
-
-from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from .models import Invitation, Conversation
-from .serializers import ConversationSerializer
-from core.models import CustomUser
+from .serializers import ConversationSerializer,InvitationSerializer
 from rest_framework import generics, permissions
-
-
-class SendInvitationView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        receiver_id = request.data.get('receiver_id')
-        receiver = CustomUser.objects.get(id=receiver_id)
-
-        # Créer l'invitation
-        invitation = Invitation.objects.create(sender=request.user, receiver=receiver)
-        return Response({"message": "Invitation envoyée !"})
-
-class AcceptInvitationView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, invitation_id):
-        invitation = Invitation.objects.get(id=invitation_id)
-
-        if invitation.receiver != request.user:
-            return Response({"error": "Non autorisé"}, status=403)
-
-        # Accepter l'invitation et créer la conversation
-        conversation = Conversation.objects.create()
-        conversation.users.add(invitation.sender, invitation.receiver)
-        invitation.is_accepted = True
-        invitation.conversation = conversation
-        invitation.save()
-
-        return Response({"message": "Invitation acceptée !"})
-
 
 class ConversationListView(generics.ListAPIView):
     """Lister toutes les conversations de l'utilisateur connecté."""
@@ -53,3 +18,12 @@ class ConversationListView(generics.ListAPIView):
         queryset = self.get_queryset().order_by('-created_at')
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+    
+class InvitationListView(generics.ListAPIView):
+    serializer_class = InvitationSerializer
+    permission_classes = [permissions.IsAuthenticated]  # Seuls les utilisateurs connectés peuvent voir leurs invitations
+
+    def get_queryset(self):
+        """Récupère les invitations où l'utilisateur est soit l'expéditeur soit le destinataire."""
+        user = self.request.user
+        return Invitation.objects.filter(sender=user) | Invitation.objects.filter(receiver=user)

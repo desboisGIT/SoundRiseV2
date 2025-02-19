@@ -345,24 +345,29 @@ class InvitationConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def create_conversation(self, sender, receiver):
+        from .models import Conversation
         """Créer une conversation entre deux utilisateurs après acceptation de l'invitation."""
-        from .models import Conversation  # Importe le modèle
+        
+        # Vérifie si une conversation existe déjà entre ces deux utilisateurs
+        existing_conversation = Conversation.objects.filter(
+            participants=sender
+        ).filter(
+            participants=receiver
+        ).first()
 
-        # Vérifie si une conversation existe déjà entre les deux utilisateurs
-        conversation, created = Conversation.objects.get_or_create(
+        if existing_conversation:
+            print(f"Une conversation existe déjà entre {sender.username} et {receiver.username}.")
+            return existing_conversation
+
+        # Crée une nouvelle conversation uniquement si aucune n'existe
+        conversation = Conversation.objects.create(
             title=f"Conversation entre {sender.username} et {receiver.username}"
         )
-
-        # Ajoute les utilisateurs à la conversation s'ils ne sont pas déjà participants
         conversation.participants.add(sender, receiver)
 
-        if created:
-            print(f"Nouvelle conversation créée entre {sender.username} et {receiver.username}.")
-        else:
-            print(f"Une conversation existait déjà entre {sender.username} et {receiver.username}.")
-
+        print(f"Nouvelle conversation créée entre {sender.username} et {receiver.username}.")
         return conversation
-    
+        
     
 
     async def send_invitation_accepted(self, sender_id,invitation_id):

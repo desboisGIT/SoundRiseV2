@@ -335,3 +335,20 @@ class AddNotificationView(APIView):
         notification = Notifications.objects.create(user=user, message=message)
         serializer = NotificationSerializer(notification)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+
+class NotificationUpdateView(APIView):
+    """Vue API pour mettre à jour une notification spécifique (PATCH uniquement)."""
+    
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, notification_id):
+        """Met à jour partiellement une notification (ex: is_read=True)."""
+        notification = get_object_or_404(Notifications, id=notification_id, user=request.user)
+        serializer = NotificationSerializer(notification, data=request.data, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
