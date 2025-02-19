@@ -1,6 +1,6 @@
 import "./LogOutButton.css";
 import { useNavigate } from "react-router-dom";
-import { useNotification } from "../../NotificationContext";
+import { useNotification } from "../../context/NotificationContext";
 import { useAuth } from "../../context/AuthContext"; // Import the hook to access global auth
 import { logout } from "../../../api/auth";
 

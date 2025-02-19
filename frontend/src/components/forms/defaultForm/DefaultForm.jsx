@@ -1,14 +1,11 @@
 import React from "react";
 import "./DefaultForm.css";
 
-export default function DefaultForm({ title, children }) {
+export default function DefaultForm({ title, children, className }) {
   return (
-    <div className="default-form">
+    <div className={`default-form ${className}`}>
       <div className="default-form-top-section">
-        <h2 className="default-form-title">{title}</h2>
-        <div className="default-form-forms">
-          <form>{children}</form>
-        </div>
+        <div className="default-form-forms">{children}</div>
       </div>
     </div>
   );

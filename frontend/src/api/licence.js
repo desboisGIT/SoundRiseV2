@@ -62,3 +62,18 @@ export const deleteLicense = async (id) => {
     throw error;
   }
 };
+
+// 5. Get Specific Licenses :id of Logged-in User
+export const getLicense = async (id) => {
+  try {
+    const response = await makeAuthenticatedRequest(() =>
+      axios.get(`${API_URL}/${id}/`, {
+        headers: getAuthHeaders(),
+      })
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching licenses:", error);
+    throw error;
+  }
+};

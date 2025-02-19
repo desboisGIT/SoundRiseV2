@@ -1,7 +1,6 @@
 // src/api/beats.js
 import axios from "axios";
-import { getAuthHeaders } from "./utils/requestHelpers";
-import { makeAuthenticatedRequest } from "./utils/requestHelpers";
+import { getAuthHeaders, makeAuthenticatedRequest, convertToFormData } from "./utils/requestHelpers";
 
 //############################################################
 //                          drafts                          //
@@ -31,14 +30,37 @@ const API_URL = "http://127.0.0.1:8000/api/beats/";
 
 // Create Draft: POST /drafts/
 export const createDraft = async (draftData) => {
-  const response = await makeAuthenticatedRequest(() => axios.post(`${API_URL}drafts/`, draftData, { headers: getAuthHeaders() }));
-  return response.data;
+  return await makeAuthenticatedRequest(() => axios.post(`${API_URL}drafts/`, draftData, { headers: getAuthHeaders() })).then(
+    (response) => response.data
+  );
+};
+
+// Upload Files To Draft: PATCH /drafts/:ID/
+export const uploadFilesToDraft = async (draftId, files) => {
+  const formData = new FormData();
+
+  // Append only files that are not null
+  Object.entries(files).forEach(([key, file]) => {
+    if (file) {
+      formData.append(key, file);
+    }
+  });
+
+  return await makeAuthenticatedRequest(() =>
+    axios.patch(`${API_URL}drafts/${draftId}/`, formData, {
+      headers: {
+        ...getAuthHeaders(),
+        "Content-Type": "multipart/form-data",
+      },
+    })
+  );
 };
 
 // Edit Draft: PATCH /drafts/:ID/
-export const editDraft = async (id, updatedData) => {
-  const response = await makeAuthenticatedRequest(() => axios.patch(`${API_URL}drafts/${id}/`, updatedData, { headers: getAuthHeaders() }));
-  return response.data;
+export const editDraft = async (draftId, draftData) => {
+  return await makeAuthenticatedRequest(() => axios.patch(`${API_URL}drafts/${draftId}/`, draftData, { headers: getAuthHeaders() })).then(
+    (response) => response.data
+  );
 };
 
 // Delete Draft: DELETE /drafts/:ID/

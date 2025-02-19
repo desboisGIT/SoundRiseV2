@@ -11,9 +11,10 @@ import LandingPage from "./pages/site/LandingPage";
 import LogIn from "./pages/user/LogIn";
 import Register from "./pages/user/Register";
 import Account from "./pages/user/Account";
-import { NotificationProvider } from "./components/NotificationContext";
+import { NotificationProvider } from "./components/context/NotificationContext";
+import { WebSocketProvider } from "./components/context/WebSocketContext";
 import { AuthProvider, useAuth } from "./components/context/AuthContext"; // Import your Auth context
-import { useNotification } from "./components/NotificationContext";
+import { useNotification } from "./components/context/NotificationContext";
 import ProfilePage from "./pages/user/ProfilePage";
 import userApi from "./api/user";
 import { logout } from "./api/auth";
@@ -28,6 +29,7 @@ import DashBoardSettings from "./pages/dashboard/accounts/DashBoardSettings";
 import DashBoardSupport from "./pages/dashboard/utils/DashBoardSupport";
 import DashBoardMessages from "./pages/dashboard/accounts/DashBoardMessages";
 import DashBoardCreateBeats from "./pages/dashboard/beats/DashBoardCreateBeats";
+import DebugPage from "./pages/DebugPage";
 
 const clientId = "162639459241-vfs3ogmpn0fb9jhva7fhfc18k1qlqqm0.apps.googleusercontent.com";
 
@@ -50,11 +52,11 @@ const AppContent = () => {
     [
       "Log Out",
       () => {
-        logout(); // Update the auth state immediately.
+        logout();
         logoutUser();
         handleNotify("Déconnecté", "error");
         axios.defaults.headers.common["Authorization"] = null;
-        navigate("/");
+        window.location.reload();
       },
     ],
   ];
@@ -96,24 +98,27 @@ const AppContent = () => {
           </>
         }
       />
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LogIn />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/account" element={<Account />} />
-        <Route path="/profile/:id" element={<ProfilePage />} />
-        <Route path="/dashboard/" element={<DashboardLayout />}>
-          <Route path="my-beats" element={<DashBoardBeats />} />
-          <Route path="upload-beat" element={<DashboardUpload />} />
-          <Route path="licences" element={<DashBoardLicence />} />
-          <Route path="analytics" element={<DashBoardAnalytics />} />
-          <Route path="profile" element={<DashBoardProfile />} />
-          <Route path="settings" element={<DashBoardSettings />} />
-          <Route path="messages" element={<DashBoardMessages />} />
-          <Route path="support" element={<DashBoardSupport />} />
-          <Route path="upload-a-banger" element={<DashBoardCreateBeats />} />
-        </Route>
-      </Routes>
+      <div className="main-content">
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LogIn />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/account" element={<Account />} />
+          <Route path="/profile/:id" element={<ProfilePage />} />
+          <Route path="/dashboard/" element={<DashboardLayout />}>
+            <Route path="my-beats" element={<DashBoardBeats />} />
+            <Route path="upload-beat" element={<DashboardUpload />} />
+            <Route path="licences" element={<DashBoardLicence />} />
+            <Route path="analytics" element={<DashBoardAnalytics />} />
+            <Route path="profile" element={<DashBoardProfile />} />
+            <Route path="settings" element={<DashBoardSettings />} />
+            <Route path="messages" element={<DashBoardMessages />} />
+            <Route path="support" element={<DashBoardSupport />} />
+            <Route path="upload-a-banger" element={<DashBoardCreateBeats />} />
+          </Route>
+          <Route path="/debug" element={<DebugPage />} />
+        </Routes>
+      </div>
     </>
   );
 };
@@ -122,11 +127,13 @@ const App = () => {
   return (
     <GoogleOAuthProvider clientId={clientId}>
       <AuthProvider>
-        <NotificationProvider>
-          <Router>
-            <AppContent />
-          </Router>
-        </NotificationProvider>
+        <WebSocketProvider>
+          <NotificationProvider>
+            <Router>
+              <AppContent />
+            </Router>
+          </NotificationProvider>
+        </WebSocketProvider>
       </AuthProvider>
     </GoogleOAuthProvider>
   );
