@@ -1,7 +1,6 @@
-from django.urls import path
+from django.urls import re_path, path
 from .consumers import CollaborationConsumer
 
 websocket_urlpatterns = [
-    path("ws/collaboration/", CollaborationConsumer.as_asgi()),
+    re_path(r"ws/collaboration/(?P<user_id>\d+)/$", CollaborationConsumer.as_asgi()),
 ]
-

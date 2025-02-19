@@ -138,10 +138,10 @@ class Notifications(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="notifications")
     message = models.TextField()
     is_read = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user}: {self.message[:50]}"
+        return f"Notification pour {self.user.username} : {self.message}"
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ["-timestamp"]
