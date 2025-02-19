@@ -124,7 +124,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'action': 'message_seen',
             'message_id': message_id
-        })) 
+        },ensure_ascii=False)) 
 
     @database_sync_to_async
     def get_unseen_messages(self, user):
@@ -143,7 +143,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if receiver_id == sender.id : 
                 await self.send(text_data=json.dumps({
                     'error': 'Impossible de se parler à soi même'
-                }))
+                },ensure_ascii=False))
                 return  # Exit early if the sender is trying to message themselves
 
             # Format the message for sending to the recipient
@@ -165,7 +165,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         except Conversation.DoesNotExist:
             await self.send(text_data=json.dumps({
                 'error': f'Conversation {conversation_id} non trouvée.'
-            }))
+            },ensure_ascii=False))
 
     async def new_message(self, event):
         """Gère la réception d'un nouveau message et l'envoie au client WebSocket."""
@@ -178,7 +178,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
 class InvitationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.user = self.scope['user']
+        self.user = self.scope["user"]
+        
         if self.user.is_authenticated:
             self.room_group_name = f"user_{self.user.id}"
             await self.channel_layer.group_add(
@@ -187,6 +188,13 @@ class InvitationConsumer(AsyncWebsocketConsumer):
             )
             await self.accept()
             print(f"Utilisateur {self.user.username} connecté au canal {self.room_group_name}")
+
+            # Récupérer et envoyer les invitations non lues
+            unread_invitations = await self.get_unread_invitations(self.user)
+            await self.send(json.dumps(
+                {"type": "unread_invitations", "invitations": unread_invitations},
+                ensure_ascii=False
+            ))
         else:
             print("Utilisateur non authentifié - connexion refusée")
             await self.close()
@@ -211,12 +219,17 @@ class InvitationConsumer(AsyncWebsocketConsumer):
             # Crée l'invitation en base de données
             await self.create_invitation(receiver_id, message)
 
-            # Envoie la notification au destinataire
-            await self.send_invitation(receiver_id, message)
+            
+            
+
         
         elif data.get('action') == 'accept_invitation':
             invitation_id = data.get('invitation_id')
             await self.accept_invitation(invitation_id)
+
+        elif data.get('action') == 'decline_invitation':
+            invitation_id = data.get('invitation_id')
+            await self.decline_invitation(invitation_id)
 
     async def check_existing_invitation(self, receiver_id):
         
@@ -230,39 +243,59 @@ class InvitationConsumer(AsyncWebsocketConsumer):
         return existing_invitation
 
 
-    async def send_invitation(self, receiver_id, message):
-        print("q")
+    async def send_invitation(self, receiver_id, invitation_id, message):
         """Envoie une invitation en direct au destinataire via WebSocket."""
+        print("Envoi d'une invitation en direct...")
+        
         await self.channel_layer.group_send(
             f"user_{receiver_id}",
             {
                 'type': 'invitation_message',
                 'message': message,
                 'sender': self.user.username,
+                'invitation_id': invitation_id  # On passe l'ID en paramètre
             }
         )
-        print(f"Invitation envoyée au canal user_{receiver_id}")
+        
+        print(f"Invitation {invitation_id} envoyée au canal user_{receiver_id}")
+
 
     async def invitation_message(self, event):
         """Reçoit et renvoie une invitation au client WebSocket."""
         await self.send(text_data=json.dumps({
             'message': event['message'],
             'sender': event['sender'],
+            'invitation_id': event['invitation_id'],  # Correction ici
         }))
         print(f"Invitation reçue et renvoyée au client : {event['message']}")
 
     @database_sync_to_async
-    def create_invitation(self, receiver_id, message):
+    def get_unread_invitations(self, user):
+        """Récupère les invitations en attente pour l'utilisateur et convertit created_at en string."""
+        from .models import Invitation
+        return [
+            {
+                "id": invitation.id,
+                "sender_username": invitation.sender.username,
+                "message": invitation.message,
+                "created_at": invitation.created_at.isoformat() if invitation.created_at else None  # Convertit datetime → string
+            }
+            for invitation in Invitation.objects.filter(receiver=user, status="pending")
+        ]
+    
+    async def create_invitation(self, receiver_id, message):
         from .models import Invitation
         from core.models import CustomUser
         """Créer une invitation dans la base de données."""
         try:
-            receiver = CustomUser.objects.get(id=receiver_id)
-            Invitation.objects.create(
+            receiver = await database_sync_to_async(CustomUser.objects.get)(id=receiver_id)
+            invitation = await database_sync_to_async(Invitation.objects.create)(
                 sender=self.user,
                 receiver=receiver,
                 message=message
             )
+        
+            await self.send_invitation(receiver_id,invitation.id, message)
             print(f"Invitation créée en base de données pour le destinataire {receiver.username}")
         except Exception as e:
             print(f"Erreur lors de la création de l'invitation : {e}")
@@ -287,13 +320,28 @@ class InvitationConsumer(AsyncWebsocketConsumer):
                 await self.create_conversation(invitation.sender, invitation.receiver)
 
                 # Notifier l'expéditeur que l'invitation a été acceptée
-                await self.send_invitation_accepted(invitation.sender.id)
+                await self.send_invitation_accepted(invitation.sender.id,invitation.id)
 
                 print("Invitation acceptée, conversation créée et notification envoyée.")
             else:
                 print("Tentative d'acceptation d'une invitation non autorisée.")
         except Invitation.DoesNotExist:
             print(f"Invitation {invitation_id} non trouvée.")
+
+    async def decline_invitation(self, invitation_id):
+        from .models import Invitation  # Importe le modèle
+
+        try:
+            invitation = await database_sync_to_async(Invitation.objects.get)(id=invitation_id)
+            if invitation.receiver == self.user:
+                await database_sync_to_async(invitation.delete)()
+                await self.send_invitation_refused(invitation.sender.id,invitation.id)
+                print(f"Invitation {invitation_id} refusée par {self.user.username}")
+            else:
+                print(f"Tentative de refus non autorisée par {self.user.username}")
+        except Invitation.DoesNotExist:
+            print(f"Invitation {invitation_id} non trouvée.")
+
 
     @database_sync_to_async
     def create_conversation(self, sender, receiver):
@@ -314,13 +362,43 @@ class InvitationConsumer(AsyncWebsocketConsumer):
             print(f"Une conversation existait déjà entre {sender.username} et {receiver.username}.")
 
         return conversation
+    
+    
 
-    async def send_invitation_accepted(self, sender_id):
+    async def send_invitation_accepted(self, sender_id,invitation_id):
         """Notifier l'expéditeur que l'invitation a été acceptée."""
+        await self.send(text_data=json.dumps({
+            'message': 'Invitation acceptée.',
+            'invitation_id':invitation_id,
+        },ensure_ascii=False))
+
+    async def send_invitation_accepted(self, sender_id, invitation_id):
+        """Notifier l'expéditeur que l'invitation a été acceptée via WebSocket."""
         await self.channel_layer.group_send(
-            f"user_{sender_id}",
+            f"user_{sender_id}",  # Envoie au groupe de l'expéditeur
             {
                 'type': 'invitation_accepted',
-                'message': f"L'invitation a été acceptée par {self.user.username}.",
+                'message': 'Invitation acceptée.',
+                'invitation_id': invitation_id,
+                'receiver': self.user.username,  # L'utilisateur qui a accepté
             }
         )
+
+    async def invitation_accepted(self, event):
+        """Envoie une notification à l'expéditeur de l'invitation."""
+        await self.send(text_data=json.dumps({
+            'message': event['message'],
+            'invitation_id': event['invitation_id'],
+            'receiver': event['receiver'],  # Qui a accepté l'invitation
+        },ensure_ascii=False))
+        print(f"Invitation {event['invitation_id']} acceptée par {event['receiver']}, notification envoyée à l'expéditeur.")
+
+
+    async def invitation_refused(self, event):
+        """Envoie une notification à l'expéditeur de l'invitation refusée."""
+        await self.send(text_data=json.dumps({
+            'message': event['message'],
+            'invitation_id': event['invitation_id'],
+            'receiver': event['receiver'],  # Qui a refusé
+        },ensure_ascii=False))
+        print(f"Invitation {event['invitation_id']} refusée par {event['receiver']}, notification envoyée à l'expéditeur.")

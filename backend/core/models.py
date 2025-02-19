@@ -136,6 +136,7 @@ class Report(models.Model):
 
 class Notifications(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="notifications")
+    sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="sent_notifications",null=True,blank=True)
     message = models.TextField()
     is_read = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
