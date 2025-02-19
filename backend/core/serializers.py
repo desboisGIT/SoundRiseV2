@@ -33,5 +33,5 @@ class ReportSerializer(serializers.ModelSerializer):
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notifications
-        fields = ['id', 'user', 'message', 'is_read', 'created_at']
+        fields = ['id', 'user', 'message', 'is_read', 'timestamp']
         read_only_fields = ['created_at']
