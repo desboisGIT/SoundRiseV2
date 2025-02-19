@@ -187,7 +187,7 @@ class BundleUserSerializer(serializers.ModelSerializer):
                 "beat_id": bb.beat.id,
                 "beat_title": bb.beat.title,
                 "selected_license_id": bb.selected_license.id,
-                "license_name": bb.selected_license.name
+                "license_title": bb.selected_license.title
             }
             for bb in obj.bundle_beats.all()
         ]
@@ -222,11 +222,39 @@ class BundleUserSerializer(serializers.ModelSerializer):
         return instance
     
 
+class BundleBeatSerializer(serializers.ModelSerializer):
+    beat_title = serializers.CharField(source="beat.title", read_only=True)
+    license_title = serializers.CharField(source="selected_license.title", read_only=True)
+    files = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BundleBeat
+        fields = ["beat_title", "license_title", "files"]
+
+    def get_files(self, obj):
+        """ Récupère les fichiers associés au beat en fonction de la licence sélectionnée """
+        required_files = obj.selected_license.license_file_types  # Types de fichiers exigés par la licence
+
+        # Dictionnaire des fichiers disponibles dans Beat
+        beat_files = {
+            "mp3": obj.beat.mp3.url if obj.beat.mp3 else None,
+            "wav": obj.beat.wav.url if obj.beat.wav else None,
+            "flac": obj.beat.flac.url if obj.beat.flac else None,
+            "ogg": obj.beat.ogg.url if obj.beat.ogg else None,
+            "aac": obj.beat.aac.url if obj.beat.aac else None,
+            "alac": obj.beat.alac.url if obj.beat.alac else None,
+            "zip": obj.beat.zip.url if obj.beat.zip else None,
+        }
+
+        # Filtrer les fichiers selon les types requis par la licence et supprimer les None
+        return {ftype: beat_files[ftype] for ftype in required_files if ftype in beat_files and beat_files[ftype]}
+
 
 class BundlePublicSerializer(serializers.ModelSerializer):
+    
     """ Sérialiseur pour afficher les bundles disponibles publiquement """
     user = serializers.StringRelatedField(read_only=True)  # Affiche le nom du créateur
-    bundle_beats = serializers.SerializerMethodField()
+    bundle_beats = BundleBeatSerializer(many=True, read_only=True)
 
     class Meta:
         model = Bundle
@@ -238,7 +266,10 @@ class BundlePublicSerializer(serializers.ModelSerializer):
             {
                 "beat_id": bb.beat.id,
                 "beat_title": bb.beat.title,
-                "license_name": bb.selected_license.name
+                "license_title": bb.selected_license.title
             }
             for bb in obj.bundle_beats.all()
         ]
+    
+
+

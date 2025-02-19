@@ -494,7 +494,7 @@ class BundleBeat(models.Model):
     def save(self, *args, **kwargs):
         self.clean()  # Vérifie la contrainte avant d'enregistrer
         super().save(*args, **kwargs)
-        
+
     def __str__(self):
         return f"{self.beat.title} - {self.selected_license.title} ({self.bundle.title})"
     
@@ -510,9 +510,19 @@ def get_bundle_files(bundle):
         # On récupère les types de fichiers nécessaires pour cette licence
         required_files = selected_license.license_file_types
 
-        # On récupère les fichiers du beat en filtrant selon la licence choisie
-        beat_files = {file.file_type: file.file_url for file in beat.files.all()}
-        selected_files = {ftype: beat_files[ftype] for ftype in required_files if ftype in beat_files}
+        # Dictionnaire des fichiers disponibles sur le beat
+        beat_files = {
+            "mp3": beat.mp3.url if beat.mp3 else None,
+            "wav": beat.wav.url if beat.wav else None,
+            "flac": beat.flac.url if beat.flac else None,
+            "ogg": beat.ogg.url if beat.ogg else None,
+            "aac": beat.aac.url if beat.aac else None,
+            "alac": beat.alac.url if beat.alac else None,
+            "zip": beat.zip.url if beat.zip else None
+        }
+        
+        # Filtrer les fichiers nécessaires en fonction de la licence
+        selected_files = {ftype: beat_files[ftype] for ftype in required_files if beat_files.get(ftype)}
 
         bundle_files[beat.id] = {
             "beat_title": beat.title,

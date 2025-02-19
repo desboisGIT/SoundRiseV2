@@ -61,6 +61,7 @@ urlpatterns = [
     path("bundles/user/", BundleUserListCreateAPIView.as_view(), name="bundle-user-list-create"),
     path("bundles/user/<int:pk>/", BundleUserRetrieveUpdateDestroyAPIView.as_view(), name="bundle-user-detail"),
     path("bundles/filter/", BundlePublicListAPIView.as_view(), name="bundle-public-list"),
+    
 
 ]
 
