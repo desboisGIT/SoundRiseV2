@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.translation import gettext_lazy as _
-from .models import CustomUser,Report
+from .models import CustomUser,Report, Notifications
 
 class CustomUserAdmin(UserAdmin):
     """Configuration de l'affichage du modèle CustomUser dans l'admin Django"""
@@ -46,3 +46,16 @@ class ReportAdmin(admin.ModelAdmin):
         if obj:  # Si l'objet existe déjà (édition)
             return ["reporter", "report_type", "reported_user", "reported_beat", "created_at"]
         return []
+
+
+@admin.register(Notifications)
+class NotificationsAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "sender", "message", "is_read", "timestamp", "type")
+    list_filter = ("is_read", "timestamp", "type")
+    search_fields = ("user__username", "sender__username", "message")
+    ordering = ("-timestamp",)
+    autocomplete_fields = ("user", "sender")
+
+    def get_queryset(self, request):
+        """Optimisation pour précharger les relations utilisateur"""
+        return super().get_queryset(request).select_related("user", "sender")

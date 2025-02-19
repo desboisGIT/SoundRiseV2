@@ -46,6 +46,7 @@ class Beat(models.Model):
 
     #vues 
     views = models.ManyToManyField("BeatView", related_name="view_beat", blank=True)
+    views_count = models.IntegerField(default=0)
 
     # Promotion
     promo_discount = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, help_text="Réduction en %")
@@ -166,9 +167,15 @@ def update_likes_count(sender, instance, action, **kwargs):
         instance.save()
 
 @receiver(m2m_changed, sender=Beat.favorites.through)
-def update_likes_count(sender, instance, action, **kwargs):
+def update_favorites_count(sender, instance, action, **kwargs):
     if action in ["post_add", "post_remove"]:
         instance.favorites_count = instance.favorites.count()
+        instance.save()
+
+@receiver(m2m_changed, sender=Beat.views.through)
+def update_favorites_count(sender, instance, action, **kwargs):
+    if action in ["post_add", "post_remove"]:
+        instance.views_count = instance.views.count()
         instance.save()
 
 
@@ -467,12 +474,46 @@ class CollaborationInvite(models.Model):
 class Bundle(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
-    beats = models.ManyToManyField(Beat, related_name="bundles")
-    user = models.ForeignKey("core.CustomUser", on_delete=models.CASCADE, related_name="bundles")
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="bundles")
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    # Licence globale
-    license_type = models.ForeignKey(License, on_delete=models.CASCADE, null=True, blank=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return self.title
 
+
+class BundleBeat(models.Model):
+    """ Association entre un Beat et un Bundle avec une licence sélectionnée """
+    bundle = models.ForeignKey(Bundle, on_delete=models.CASCADE, related_name="bundle_beats")
+    beat = models.ForeignKey("Beat", on_delete=models.CASCADE, related_name="bundle_beats")
+    selected_license = models.ForeignKey("License", on_delete=models.CASCADE, related_name="bundle_licenses")
+
+    class Meta:
+        unique_together = ("bundle", "beat")  # Un beat ne peut être ajouté qu'une seule fois par bundle
+
+    def __str__(self):
+        return f"{self.beat.title} - {self.selected_license.name} ({self.bundle.title})"
+    
+
+def get_bundle_files(bundle):
+    """ Récupère les fichiers à livrer pour un bundle en fonction des licences sélectionnées """
+    bundle_files = {}
+
+    for bundle_beat in bundle.bundle_beats.all():
+        beat = bundle_beat.beat
+        selected_license = bundle_beat.selected_license
+
+        # On récupère les types de fichiers nécessaires pour cette licence
+        required_files = selected_license.license_file_types
+
+        # On récupère les fichiers du beat en filtrant selon la licence choisie
+        beat_files = {file.file_type: file.file_url for file in beat.files.all()}
+        selected_files = {ftype: beat_files[ftype] for ftype in required_files if ftype in beat_files}
+
+        bundle_files[beat.id] = {
+            "beat_title": beat.title,
+            "license": selected_license.name,
+            "files": selected_files
+        }
+
+    return bundle_files

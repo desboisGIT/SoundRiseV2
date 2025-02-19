@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Beat, License,BeatComment,DraftBeat,Hashtag
+from .models import Beat, License,BeatComment,DraftBeat,Hashtag,Bundle,BundleBeat
 
 class BeatSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(source='user.id', read_only=True)  # Afficher l'ID de l'utilisateur
@@ -18,7 +18,7 @@ class BeatSerializer(serializers.ModelSerializer):
     class Meta:
         model = Beat
         fields = ['id', 'title', 'audio_file', 'cover_image', 'bpm', 'key', 'genre',"hashtags", 'price'
-                  , 'likes_count', 'created_at', 'updated_at', 'user', 'user_id', 'likes',"is_liked","is_favorited"]
+                  , 'likes_count', 'created_at', 'updated_at', 'user', 'user_id', 'likes',"is_liked","is_favorited","view_count"]
     def get_is_liked(self, obj):
         user = self.context["request"].user
         return user.is_authenticated and obj.likes.filter(id=user.id).exists()
@@ -165,3 +165,80 @@ class HashtagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Hashtag
         fields = ["id", "name"]
+
+
+class BundleUserSerializer(serializers.ModelSerializer):
+    """ Sérialiseur pour la gestion des bundles de l'utilisateur connecté """
+    beats = serializers.ListField(
+        child=serializers.DictField(), write_only=True
+    )  # Ex: [{"beat": 1, "selected_license": 2}, {"beat": 3, "selected_license": 5}]
+
+    bundle_beats = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Bundle
+        fields = ["id", "title", "description", "price", "created_at", "beats", "bundle_beats"]
+
+    def get_bundle_beats(self, obj):
+        """ Retourne les beats et leurs licences associées """
+        return [
+            {
+                "id": bb.id,
+                "beat_id": bb.beat.id,
+                "beat_title": bb.beat.title,
+                "selected_license_id": bb.selected_license.id,
+                "license_name": bb.selected_license.name
+            }
+            for bb in obj.bundle_beats.all()
+        ]
+
+    def create(self, validated_data):
+        """ Création d'un bundle avec ses beats et licences """
+        beats_data = validated_data.pop("beats", [])
+        bundle = Bundle.objects.create(**validated_data, user=self.context["request"].user)
+
+        for beat_data in beats_data:
+            beat = Beat.objects.get(id=beat_data["beat"])
+            selected_license = License.objects.get(id=beat_data["selected_license"])
+            BundleBeat.objects.create(bundle=bundle, beat=beat, selected_license=selected_license)
+
+        return bundle
+
+    def update(self, instance, validated_data):
+        """ Mise à jour d'un bundle avec suppression et ajout des beats """
+        beats_data = validated_data.pop("beats", None)
+        instance.title = validated_data.get("title", instance.title)
+        instance.description = validated_data.get("description", instance.description)
+        instance.price = validated_data.get("price", instance.price)
+        instance.save()
+
+        if beats_data is not None:
+            instance.bundle_beats.all().delete()  # Supprime les anciens liens
+            for beat_data in beats_data:
+                beat = Beat.objects.get(id=beat_data["beat"])
+                selected_license = License.objects.get(id=beat_data["selected_license"])
+                BundleBeat.objects.create(bundle=instance, beat=beat, selected_license=selected_license)
+
+        return instance
+    
+
+
+class BundlePublicSerializer(serializers.ModelSerializer):
+    """ Sérialiseur pour afficher les bundles disponibles publiquement """
+    user = serializers.StringRelatedField(read_only=True)  # Affiche le nom du créateur
+    bundle_beats = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Bundle
+        fields = ["id", "title", "description", "price", "user", "created_at", "bundle_beats"]
+
+    def get_bundle_beats(self, obj):
+        """ Liste les beats et licences associées à ce bundle """
+        return [
+            {
+                "beat_id": bb.beat.id,
+                "beat_title": bb.beat.title,
+                "license_name": bb.selected_license.name
+            }
+            for bb in obj.bundle_beats.all()
+        ]

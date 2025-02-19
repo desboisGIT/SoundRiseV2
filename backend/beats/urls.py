@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from rest_framework.routers import DefaultRouter
-from .views import BeatViewSet, LicenseViewSet, BeatCommentViewSet,FinalizeDraftView,DraftBeatListCreateView,DraftBeatDetailView,UserLicenseListView,user_drafts,AddBeatView,GetBeatViews
+from .views import BeatViewSet, LicenseViewSet, BeatCommentViewSet,FinalizeDraftView,DraftBeatListCreateView,DraftBeatDetailView,UserLicenseListView,user_drafts,AddBeatView,GetBeatViews,BundleUserListCreateAPIView,BundlePublicListAPIView,BundleUserRetrieveUpdateDestroyAPIView
 router = DefaultRouter()
 router.register(r"beats", BeatViewSet)
 
@@ -10,7 +10,7 @@ urlpatterns = [
     # Autres URLs ici...
     path('filter/', views.filter_beats, name='filter_beats'),
     path("<int:beat_id>/add_view/", AddBeatView.as_view(), name="add_beat_view"),
-        path('<int:beat_id>/views/', GetBeatViews.as_view(), name='get_beat_views'),   # Récupérer le nombre de vues
+    path('<int:beat_id>/views/', GetBeatViews.as_view(), name='get_beat_views'),   # Récupérer le nombre de vues
     
 
     path('licenses/', LicenseViewSet.as_view({
@@ -57,6 +57,10 @@ urlpatterns = [
     path('finalize-draft/<int:draft_id>/', FinalizeDraftView.as_view(), name='finalize-draft'),
 
     path('conditions/<int:license_id>/', views.conditions_by_license, name='conditions-by-license'),
+
+    path("bundles/user/", BundleUserListCreateAPIView.as_view(), name="bundle-user-list-create"),
+    path("bundles/user/<int:pk>/", BundleUserRetrieveUpdateDestroyAPIView.as_view(), name="bundle-user-detail"),
+    path("bundles/filter/", BundlePublicListAPIView.as_view(), name="bundle-public-list"),
 
 ]
 

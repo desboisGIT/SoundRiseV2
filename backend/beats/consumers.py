@@ -23,7 +23,7 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
              # Envoyer les notifications non lues
             unread_notifications = await self.get_unread_notifications(self.user)
             await self.send(json.dumps(
-                {"type": "unread_notifications", "notifications": unread_notifications}, 
+                {"type": "unread_notifications","notif_type":"unread_notifications", "notifications": unread_notifications}, 
                 ensure_ascii=False  # Empêche l'encodage en Unicode
             ))
         else:
@@ -134,10 +134,10 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
         ]
 
     @database_sync_to_async
-    def create_notification(self, user, message):
+    def create_notification(self, user, message,type):
         """ Crée une notification pour l'utilisateur """
         from core.models import Notifications
-        return Notifications.objects.create(user=user, message=message)
+        return Notifications.objects.create(user=user, message=message,type=type)
     
     @database_sync_to_async
     def get_unread_notifications(self, user):
@@ -189,6 +189,7 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
             f"user_{recipient.id}",
             {
                 "type": "invitation_notification",
+                "notif_type":"invitation_collab",
                 "invite_id": invite.id,
                 "draftbeat_title": draftbeat.title,
                 "sender": self.user.username,
@@ -196,7 +197,8 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
         )
         await self.create_notification(
             recipient, 
-            f"{self.user.username} vous a invité à collaborer sur '{draftbeat.title}'."
+            f"{self.user.username} vous a invité à collaborer sur '{draftbeat.title}'.",
+            "invitation_collab"
         )
 
         await self.send(json.dumps({"success": "Invitation envoyée"},ensure_ascii=False))
@@ -231,6 +233,7 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
             f"user_{invite.sender.id}",
             {
                 "type": "invitation_status",
+                "notif_type":"collab_invite_accepted",
                 "invite_id": invite.id,
                 "status": "accepted",
                 "collaborator": self.user.username,
@@ -238,7 +241,8 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
         )
         await self.create_notification(
             invite.sender, 
-            f"{self.user.username} a accepté votre invitation à collaborer sur '{invite.draftbeat.title}'."
+            f"{self.user.username} a accepté votre invitation à collaborer sur '{invite.draftbeat.title}'.",
+            "acceptation_collab"
         )
 
         # Envoi d'une confirmation à l'utilisateur
@@ -272,14 +276,16 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_send(
             f"user_{sender_id}",
             {
-                "type": "invite_refused",
+                "type": "collab_invite_refused",
+                "notif_type":"invite_refused",
                 "message": "Invitation refusée",
             },
         )
 
         await self.create_notification(
             invite.sender, 
-            f"{self.user.username} a refusé votre invitation à collaborer sur '{invite.draftbeat.title}'."
+            f"{self.user.username} a refusé votre invitation à collaborer sur '{invite.draftbeat.title}'.",
+            "refus_collab"
         )
 
 

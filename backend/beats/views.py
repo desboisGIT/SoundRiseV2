@@ -2,8 +2,8 @@
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
-from .models import Beat,License,BeatComment,DraftBeat,Hashtag,BeatView
-from .serializers import BeatSerializer,BeatActionSerializer,LicenseSerializer,BeatCommentSerializer,DraftBeatSerializer,HashtagSerializer
+from .models import Beat,License,BeatComment,DraftBeat,Hashtag,BeatView,Bundle,BundleBeat
+from .serializers import BeatSerializer,BeatActionSerializer,LicenseSerializer,BeatCommentSerializer,DraftBeatSerializer,HashtagSerializer,BundlePublicSerializer,BundleUserSerializer
 from django.db.models import Q
 from core.models import CustomUser
 from rest_framework import viewsets, permissions, generics
@@ -545,3 +545,71 @@ class GetBeatViews(APIView):
             return Response({"total_views": beat.total_views}, status=status.HTTP_200_OK)
         except Beat.DoesNotExist:
             return Response({"error": "Beat non trouvé"}, status=status.HTTP_404_NOT_FOUND)
+        
+
+class BundleUserListCreateAPIView(generics.ListCreateAPIView):
+    """ Liste et création des bundles de l'utilisateur connecté """
+    serializer_class = BundleUserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Bundle.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class BundleUserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    """ Détail, mise à jour et suppression d'un bundle de l'utilisateur connecté """
+    serializer_class = BundleUserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Bundle.objects.filter(user=self.request.user)
+    
+
+
+class BundlePublicPagination(LimitOffsetPagination):
+    """ Pagination avec limites personnalisées """
+    default_limit = 10  # Nombre d'objets retournés par défaut
+    max_limit = 100  # Limite maximale
+
+class BundlePublicListAPIView(generics.ListAPIView):
+    """ Liste des bundles accessibles publiquement avec filtres et sélection des champs """
+    serializer_class = BundlePublicSerializer
+    permission_classes = [permissions.AllowAny]
+    pagination_class = BundlePublicPagination  # Utilisation de la pagination personnalisée
+
+    def get_queryset(self):
+        """ Applique les filtres dynamiques """
+        queryset = Bundle.objects.all()
+        filter_params = self.request.query_params.dict()
+
+        # Applique les filtres dynamiques uniquement si le champ existe dans le modèle
+        valid_filters = {k: v for k, v in filter_params.items() if k in [f.name for f in Bundle._meta.fields]}
+        return queryset.filter(**valid_filters)
+
+    def list(self, request, *args, **kwargs):
+        """ Gère la sélection des champs et la pagination """
+        queryset = self.get_queryset()
+
+        # Appliquer la pagination
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            data = serializer.data
+        else:
+            serializer = self.get_serializer(queryset, many=True)
+            data = serializer.data
+
+        # Sélection dynamique des champs
+        fields = request.query_params.get("fields")
+        if fields:
+            fields = fields.split(",")
+            data = [{k: v for k, v in obj.items() if k in fields} for obj in data]
+
+        # Retourner la réponse paginée si la pagination est active
+        if page is not None:
+            return self.get_paginated_response(data)
+        
+        return Response(data)
