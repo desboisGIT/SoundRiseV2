@@ -51,10 +51,10 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
             if action in actions:
                 await actions[action](data)
             else:
-                await self.send(json.dumps({"error": "Action invalide"}),ensure_ascii=False)
+                await self.send(json.dumps({"error": "Action invalide"},ensure_ascii=False))
 
         except json.JSONDecodeError:
-            await self.send(json.dumps({"error": "Format JSON invalide"}),ensure_ascii=False)
+            await self.send(json.dumps({"error": "Format JSON invalide"},ensure_ascii=False))
 
     @database_sync_to_async
     def get_user(self, user_id):
@@ -169,19 +169,19 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
         draftbeat = await self.get_draftbeat(draftbeat_id)
 
         if not recipient:
-            return await self.send(json.dumps({"error": "Utilisateur introuvable"}),ensure_ascii=False)
+            return await self.send(json.dumps({"error": "Utilisateur introuvable"},ensure_ascii=False))
 
         if not draftbeat:
-            return await self.send(json.dumps({"error": "DraftBeat introuvable"}),ensure_ascii=False)
+            return await self.send(json.dumps({"error": "DraftBeat introuvable"},ensure_ascii=False))
 
         if draftbeat.user_id != self.user.id:
-            return await self.send(json.dumps({"error": "Vous n'êtes pas le propriétaire de ce DraftBeat"}),ensure_ascii=False)
+            return await self.send(json.dumps({"error": "Vous n'êtes pas le propriétaire de ce DraftBeat"},ensure_ascii=False))
 
         if recipient.id == self.user.id:
-            return await self.send(json.dumps({"error": "Vous ne pouvez pas vous inviter vous-même"}),ensure_ascii=False)
+            return await self.send(json.dumps({"error": "Vous ne pouvez pas vous inviter vous-même"},ensure_ascii=False))
 
         if await self.invite_exists(draftbeat, recipient):
-            return await self.send(json.dumps({"error": "Invitation déjà envoyée"}),ensure_ascii=False)
+            return await self.send(json.dumps({"error": "Invitation déjà envoyée"},ensure_ascii=False))
 
         invite = await self.create_invite(self.user, recipient, draftbeat)
 
@@ -199,7 +199,7 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
             f"{self.user.username} vous a invité à collaborer sur '{draftbeat.title}'."
         )
 
-        await self.send(json.dumps({"success": "Invitation envoyée"}),ensure_ascii=False)
+        await self.send(json.dumps({"success": "Invitation envoyée"},ensure_ascii=False))
         
     from asgiref.sync import sync_to_async
 
@@ -213,11 +213,11 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
         invite = await sync_to_async(lambda: CollaborationInvite.objects.select_related("draftbeat", "sender").filter(id=invite_id, recipient=self.user).first())()
 
         if not invite:
-            return await self.send(json.dumps({"error": "Invitation introuvable"}),ensure_ascii=False)
+            return await self.send(json.dumps({"error": "Invitation introuvable"},ensure_ascii=False))
         
         # Vérifier si l'utilisateur est bien le destinataire de l'invitation
         if invite.recipient_id != user.id:
-            return await self.send(json.dumps({"error": "Accès refusé"}),ensure_ascii=False)
+            return await self.send(json.dumps({"error": "Accès refusé"},ensure_ascii=False))
 
 
         # Mise à jour du statut de l'invitation
@@ -242,7 +242,7 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
         )
 
         # Envoi d'une confirmation à l'utilisateur
-        await self.send(json.dumps({"success": "Invitation acceptée"}),ensure_ascii=False)
+        await self.send(json.dumps({"success": "Invitation acceptée"},ensure_ascii=False))
 
 
     async def refuse_invite(self, data):
@@ -255,11 +255,11 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
         invite = await sync_to_async(lambda: CollaborationInvite.objects.select_related("sender").filter(id=invite_id, recipient=self.user).first())()
 
         if not invite:
-            return await self.send(json.dumps({"error": "Invitation introuvable"}),ensure_ascii=False)
+            return await self.send(json.dumps({"error": "Invitation introuvable"},ensure_ascii=False))
         
         # Vérifier si l'utilisateur est bien le destinataire de l'invitation
         if invite.recipient_id != user.id:
-            return await self.send(json.dumps({"error": "Accès refusé"}),ensure_ascii=False)
+            return await self.send(json.dumps({"error": "Accès refusé"},ensure_ascii=False))
 
 
         # Mise à jour du statut de l'invitation
@@ -284,7 +284,7 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
 
 
         # Confirmation côté utilisateur
-        await self.send(json.dumps({"success": "Invitation refusée"}),ensure_ascii=False)
+        await self.send(json.dumps({"success": "Invitation refusée"},ensure_ascii=False))
 
 
 
@@ -296,10 +296,10 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
 
         draftbeat = await self.get_draftbeat(draftbeat_id)  # Supposé asynchrone
         if not draftbeat:
-            return await self.send(json.dumps({"error": "DraftBeat introuvable"}),ensure_ascii=False)
+            return await self.send(json.dumps({"error": "DraftBeat introuvable"},ensure_ascii=False))
         
         if draftbeat.user_id != user.id:  # Comparer directement les IDs pour éviter les requêtes inutiles
-            return await self.send(json.dumps({"error": "Accès refusé"}),ensure_ascii=False)
+            return await self.send(json.dumps({"error": "Accès refusé"},ensure_ascii=False))
 
 
         invites = await self.get_invites_for_draftbeat(draftbeat)  # Maintenant bien géré en async
@@ -310,8 +310,7 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
 
     async def invitation_notification(self, event):
         """ Notification WebSocket pour les invitations """
-        await self.send(json.dumps(event),ensure_ascii=False)
-
+        await self.send(json.dumps(event, ensure_ascii=False))
     async def invitation_status(self, event):
         """ Notification WebSocket pour le statut des invitations """
-        await self.send(json.dumps(event),ensure_ascii=False)
+        await self.send(json.dumps(event, ensure_ascii=False))
