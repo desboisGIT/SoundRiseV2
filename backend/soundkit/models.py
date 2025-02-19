@@ -18,6 +18,7 @@ class Soundkit(models.Model):
     """Un pack de samples compressé en fichier ZIP."""
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
+    preview_audio = models.FileField(upload_to="soundkits/previews/")
     zip_file = models.FileField(upload_to="soundkits/")
     creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="soundkits")
     created_at = models.DateTimeField(auto_now_add=True)

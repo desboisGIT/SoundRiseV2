@@ -101,6 +101,7 @@ INSTALLED_APPS = [
     "messaging",
     "websockets",
     'transaction',
+    'soundkit'
 ]
 
 # ---------------------------------------------------------

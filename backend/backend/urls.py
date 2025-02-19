@@ -27,6 +27,7 @@ urlpatterns = [
     path('api/beats/', include('beats.urls')),
     path('api/messaging/', include('messaging.urls')),
     path('api/transaction/',include('transaction.urls')),
+    path('api/soundkit/',include('soundkit.urls')),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

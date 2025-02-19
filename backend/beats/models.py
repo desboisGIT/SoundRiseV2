@@ -9,11 +9,6 @@ from django.db.models.signals import pre_delete,post_save
 from django.core.exceptions import ValidationError
 
 
-
-
-
-
-
 class Beat(models.Model):
     """
     Modèle représentant un beat musical sur Soundrise.
@@ -491,8 +486,17 @@ class BundleBeat(models.Model):
     class Meta:
         unique_together = ("bundle", "beat")  # Un beat ne peut être ajouté qu'une seule fois par bundle
 
+    def clean(self):
+        """ Vérifie que la licence sélectionnée appartient bien aux licences du beat """
+        if self.selected_license not in self.beat.licenses.all():
+            raise ValidationError({"selected_license": "La licence choisie n'est pas valide pour ce beat."})
+        
+    def save(self, *args, **kwargs):
+        self.clean()  # Vérifie la contrainte avant d'enregistrer
+        super().save(*args, **kwargs)
+        
     def __str__(self):
-        return f"{self.beat.title} - {self.selected_license.name} ({self.bundle.title})"
+        return f"{self.beat.title} - {self.selected_license.title} ({self.bundle.title})"
     
 
 def get_bundle_files(bundle):

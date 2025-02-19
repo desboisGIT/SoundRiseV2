@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html, mark_safe
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import Beat, License,DraftBeat,CollaborationInvite
+from .models import Beat, License,DraftBeat,CollaborationInvite,Bundle,BundleBeat
 
 # ✅ Inline pour gérer les licences directement dans l'admin du Beat
 class LicenseInline(admin.TabularInline):  
@@ -159,3 +159,27 @@ class CollaborationInviteAdmin(admin.ModelAdmin):
     refuse_invite.short_description = "Refuser les invitations sélectionnées"
 
     actions = [accept_invite, refuse_invite]
+
+class BundleBeatInline(admin.TabularInline):  # Utilisation de TabularInline pour un affichage en tableau
+    model = BundleBeat
+    extra = 1  # Nombre de lignes vides affichées par défaut pour ajouter de nouveaux objets
+    autocomplete_fields = ["beat", "selected_license"]  # Optimisation pour les gros volumes de données
+    readonly_fields = ("id",)  # Empêche la modification de l'ID
+
+@admin.register(Bundle)
+class BundleAdmin(admin.ModelAdmin):
+    list_display = ("title", "user", "price", "created_at")
+    list_filter = ("created_at", "price")
+    search_fields = ("title", "user__username")
+    ordering = ("-created_at",)
+    list_display_links = ("title",)
+    readonly_fields = ("created_at",)
+    inlines = [BundleBeatInline]  # Affiche les BundleBeats dans la page d'un Bundle
+
+
+@admin.register(BundleBeat)
+class BundleBeatAdmin(admin.ModelAdmin):
+    list_display = ("bundle", "beat", "selected_license")
+    list_filter = ("bundle", "selected_license")
+    search_fields = ("bundle__title", "beat__title", "selected_license__name")
+    ordering = ("bundle", "beat")
