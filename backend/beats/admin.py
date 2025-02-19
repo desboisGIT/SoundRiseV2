@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.utils.html import format_html
+from django.utils.html import format_html, mark_safe
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .models import Beat, License,DraftBeat,CollaborationInvite
@@ -88,26 +88,43 @@ def update_beat_audio(sender, instance, **kwargs):
 
 
 class DraftBeatAdmin(admin.ModelAdmin):
-    list_display = ('title', 'user', 'bpm', 'key', 'genre', 'created_at', 'updated_at')
+    list_display = ('title', 'user', 'bpm', 'key', 'cover_image_preview', 'files_list_preview', 'created_at', 'updated_at')
     list_filter = ('created_at', 'updated_at', 'user')
     search_fields = ('title', 'user__username', 'genre', 'bpm')
     filter_horizontal = ('licenses', 'co_artists')
     readonly_fields = ('created_at', 'updated_at')
 
-    # Pour afficher l'image de couverture dans l'admin
+    # Display cover image preview
     def cover_image_preview(self, obj):
         if obj.cover_image:
-            return format_html('<img src="{url}" width="100" />', url=obj.cover_image.url)
+            return format_html('<img src="{}" width="100" />', obj.cover_image.url)
         return "No image"
     cover_image_preview.short_description = 'Cover Image'
 
-    # Permet d'afficher l'image de couverture dans la liste
-    list_display = ('title', 'user', 'bpm', 'key', 'cover_image_preview','created_at', 'updated_at')
+    # ✅ Display available file links
+    def files_list_preview(self, obj):
+        file_fields = ['mp3', 'wav', 'flac', 'ogg', 'aac', 'alac', 'zip']
+        file_links = []
+        
+        for field in file_fields:
+            file = getattr(obj, field)
+            if file:
+                file_links.append(f'<a href="{file.url}" target="_blank">{field.upper()}</a>')
 
-    # Personnaliser le formulaire d'édition si nécessaire
+        if file_links:
+            return mark_safe("<br>".join(file_links))
+        return "No files uploaded"
+    
+    files_list_preview.short_description = "Available Files"
+
+    # Custom Admin Form
     fieldsets = (
         (None, {
             'fields': ('title', 'user', 'bpm', 'key', 'genre', 'cover_image', 'co_artists', 'licenses')
+        }),
+        ('Uploaded Files', {
+            'fields': ('mp3', 'wav', 'flac', 'ogg', 'aac', 'alac', 'zip'),
+            'classes': ('collapse',),
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),
@@ -115,8 +132,9 @@ class DraftBeatAdmin(admin.ModelAdmin):
         }),
     )
 
-# Enregistrer le modèle et l'admin
+# Register the model
 admin.site.register(DraftBeat, DraftBeatAdmin)
+
 
 
 @admin.register(CollaborationInvite)
