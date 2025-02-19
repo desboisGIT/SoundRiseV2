@@ -1,4 +1,5 @@
 import { createTrack } from "../beats";
+import { getLicense } from "../licence";
 
 //###############################  UPLOAD BEAT SRIALIZER  ###############################
 
@@ -56,13 +57,23 @@ const validateBeatData = (beatData) => {
   return true;
 };
 
-const listFileFromLicenses = (licenseIDs) => {
-  for (const licenseID of licenseIDs) {
-  }
-};
+const listFileFromLicenses = async (licenseIDs) => {
+  const fileTypes = [];
 
-const validateFileFormat = () => {
-  return null;
+  for (const licenseID of licenseIDs) {
+    const license = await getLicense(licenseID);
+    //console.log(license);
+    if (Array.isArray(license.license_file_types)) {
+      fileTypes.push(...license.license_file_types);
+    } else {
+      fileTypes.push(license.license_file_types);
+    }
+  }
+
+  const uniqueFileTypes = [...new Set(fileTypes)];
+  //console.log(`Unique list: ${uniqueFileTypes}`);
+
+  return uniqueFileTypes;
 };
 
 /**
@@ -70,24 +81,37 @@ const validateFileFormat = () => {
  * @param {Object} beatData - The raw beat data from the form.
  * @returns {Object} The serialized beat data.
  */
-export const serializeBeatData = (beatData) => {
+export const serializeBeatData = async (beatData) => {
   if (!validateBeatData(beatData)) {
     return "error";
   }
-  var serialized = {
+
+  const requiredFileTypes = await listFileFromLicenses(beatData.licenses);
+  console.log("Required file types:", requiredFileTypes);
+
+  const missingFiles = requiredFileTypes.filter((fileType) => !beatData.tracks[fileType]);
+  if (missingFiles.length > 0) {
+    console.error("Missing required files for:", missingFiles);
+    return "error";
+  } else {
+  }
+
+  const serialized = {
     title: beatData.title.trim(),
     genre: beatData.genre.toLowerCase(),
     bpm: parseInt(beatData.bpm, 10),
     key: beatData.key,
-    is_public: beatData.is_public ? true : false,
-    // For files, you might attach them to a FormData later
-    // or perform any special formatting.
-    // Also, if you have arrays or nested objects, transform them accordingly.
+    mp3: null,
+    wav: null,
+    flac: null,
+    ogg: null,
+    aac: null,
+    alac: null,
+    zip: null,
     co_artists: beatData.co_artists,
     licenses: beatData.licenses,
+    cover_image: beatData.cover_image,
   };
-
-  // Include any additional transformation logic here
 
   return serialized;
 };

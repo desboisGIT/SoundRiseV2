@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }) => {
   const login = (token) => {
     localStorage.setItem("access_token", token);
     setLoggedIn(true);
-    // Optionally, you could immediately fetch user info here as well
+    window.location.reload();
   };
 
   const logoutUser = () => {
@@ -43,6 +43,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("user");
     setUser(null);
     setLoggedIn(false);
+    window.location.reload();
   };
 
   return <AuthContext.Provider value={{ loggedIn, user, login, logoutUser, setUser }}>{children}</AuthContext.Provider>;

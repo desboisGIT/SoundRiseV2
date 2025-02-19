@@ -9,12 +9,37 @@ html,
   height: 100%;
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
+  font-family: "Poppins", Arial, Helvetica, sans-serif;
 }
 
 body::-webkit-scrollbar,
 html::-webkit-scrollbar,
 #root::-webkit-scrollbar {
   display: none;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Make sure #root or main container also takes full height */
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh; /* At least full viewport height */
+}
+
+/* Make the main content area fill remaining space */
+.main-content {
+  flex: 1; /* Grow to fill available space */
+  padding-top: 69px; /* Push content below the TopBar */
+  display: flex;
+  flex-direction: column;
 }
 
 .SoundRiseLogoMain {
@@ -53,7 +78,7 @@ html::-webkit-scrollbar,
 }
 
 .form-input:focus {
-  transform: translateY(-2px); /* Subtle lift effect */
+  transform: translateY(-1px); /* Subtle lift effect */
   background-color: rgb(20, 20, 20); /* Slightly lighter for focus */
   border: 1px solid #a41db6; /* Accent color on focus */
   outline: none;
@@ -133,4 +158,12 @@ pre {
   color: rgb(216, 216, 216);
   background-color: #2c2c2c6e;
   font-size: 105%;
+}
+
+.separator {
+  width: 100%;
+  height: 1px;
+  background-color: rgb(44, 44, 44);
+  margin-top: 7px;
+  margin-bottom: 7px;
 }

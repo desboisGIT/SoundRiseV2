@@ -21,11 +21,8 @@ const LoginWithGoogle = () => {
       console.log("Response from backend:", data);
 
       if (data.access) {
-        // Store the access token in localStorage for in-memory usage.
         localStorage.setItem("access_token", data.access);
-        // Note: The refresh token is stored as an HttpOnly cookie,
-        // so you won't see it in JavaScript storage.
-
+        login(data.access);
         console.log("User logged in successfully!");
       } else {
         console.error("Login failed:", data.error || data.message);

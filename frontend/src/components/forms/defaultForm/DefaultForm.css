@@ -2,33 +2,37 @@
   display: flex;
   flex-direction: column;
   height: fit-content;
-  width: fit-content;
-  max-width: 500px;
-  padding: 10px;
+  border-radius: 15px;
+  width: 360px !important;
+  min-width: 360px;
+  min-width: 360px;
+  padding: 25px !important;
   margin-bottom: 20px;
   background-color: var(--main-background-color);
   color: rgb(245, 245, 245);
   border: 1px solid #505050bb;
   transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1) !important;
   padding: 20px;
-  border-radius: 15px;
-  width: fit-content !important;
   font-family: "Poppins", Arial, Helvetica, sans-serif;
 }
 .default-form-title {
   margin-top: 2px;
-  margin-left: 5px;
+  margin-left: 3px;
+  margin-bottom: 10px;
+  text-align: center;
+  font-size: 20px !important;
+  font-weight: 500;
+  color: #f3f3f3;
 }
 
 .default-form:hover {
-  box-shadow: 0px 0px 1px rgba(165, 165, 165, 0.01), 0px 0px 4px rgba(165, 165, 165, 0.02),
-    0px 0px 9px rgba(165, 165, 165, 0.03), 0px 0px 15px rgba(165, 165, 165, 0.04),
-    0px 0px 24px rgba(165, 165, 165, 0.05);
+  box-shadow: 0px 0px 1px rgba(165, 165, 165, 0.01), 0px 0px 4px rgba(165, 165, 165, 0.02), 0px 0px 9px rgba(165, 165, 165, 0.03),
+    0px 0px 15px rgba(165, 165, 165, 0.04), 0px 0px 24px rgba(165, 165, 165, 0.05);
 }
 
 .default-form-bottom-section {
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
   justify-content: space-between;
   align-items: center;
 }
@@ -38,12 +42,15 @@
   cursor: pointer;
   color: var(--link-color);
   user-select: none !important;
+  margin-bottom: 0px;
+  text-align: center;
 }
 .default-form-bottom-section-text:hover {
   text-decoration: underline;
 }
 
 .default-form-bottom-section-sumbit-button {
+  margin-top: 10px;
   display: inline-block;
   width: 100%;
   font-size: 1rem;
@@ -52,7 +59,7 @@
   text-align: center;
   vertical-align: middle;
   cursor: pointer;
-  padding: 0.675rem 0.75rem;
+  padding: 0.655rem 0.75rem;
   border: 1px solid transparent;
   border-radius: 0.25rem;
   background-color: #007bff; /* Bootstrap primary color */
@@ -70,7 +77,7 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  gap: 10px;
+  gap: 15px;
 }
 
 .default-form-forms {

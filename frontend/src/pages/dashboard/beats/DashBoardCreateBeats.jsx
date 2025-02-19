@@ -1,31 +1,38 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../../../components/context/AuthContext";
 import CollaborationDropDown from "../../../components/dashBoard/pageComponents/collaborationDropDown/CollaborationDropDown";
 import { getLicenseList } from "../../../api/licence";
-import { createDraft, editDraft, deleteDraft, finalizeDraft, getUserDrafts } from "../../../api/beats";
-import { serializeBeatData } from "../../../api/utils/serializers";
+import { createDraft, uploadFilesToDraft, editDraft, finalizeDraft } from "../../../api/beats";
 import LicenseCard from "../../../components/beats/licenses/LicenseCard";
 import { useNavigate } from "react-router-dom";
 
 export default function DashBoardCreateBeats() {
   const { user } = useAuth();
-  const [showDropDown, setShowDropDown] = useState(false);
+  const [step, setStep] = useState(1);
   const [licenses, setLicenses] = useState([]);
   const [selectedLicenseFiles, setSelectedLicenseFiles] = useState([]);
-  const [serializedData, setSerializedData] = useState();
+  const [currentDraftId, setCurrentDraftId] = useState(null);
   const navigate = useNavigate();
 
   const [draft, setDraft] = useState({
-    user: user ? user.id : null,
     title: "",
-    bpm: 120,
+    bpm: "",
     key: "",
     genre: "",
-    is_public: false,
-    cover_image: null,
-    co_artists: [],
-    tracks: {},
     licenses: [],
+    co_artists: [],
+    user: user ? user.id : null,
+  });
+
+  const [files, setFiles] = useState({
+    cover_image: null,
+    mp3: null,
+    wav: null,
+    flac: null,
+    ogg: null,
+    aac: null,
+    alac: null,
+    zip: null,
   });
 
   useEffect(() => {
@@ -43,115 +50,169 @@ export default function DashBoardCreateBeats() {
     fetchLicenses();
   }, []);
 
-  const updateDraftField = (field, value) => {
-    setDraft((prev) => ({ ...prev, [field]: value }));
+  const handleDraftChange = (e) => {
+    const { name, value } = e.target;
+    setDraft((prev) => ({ ...prev, [name]: value }));
   };
 
-  const musicalKeys = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-
-  const [coverPreview, setCoverPreview] = useState(null);
-  useEffect(() => {
-    if (draft.cover_image) {
-      const url = URL.createObjectURL(draft.cover_image);
-      setCoverPreview(url);
-      return () => URL.revokeObjectURL(url);
-    } else {
-      setCoverPreview(null);
-    }
-  }, [draft.cover_image]);
-  const handleUserSelect = (selectedUser) => {
-    if (draft.co_artists.some((id) => id === selectedUser.id)) {
-      updateDraftField(
-        "co_artists",
-        draft.co_artists.filter((id) => id !== selectedUser.id)
-      );
-    } else {
-      updateDraftField("co_artists", [...draft.co_artists, selectedUser.id]);
-    }
+  const handleFileChange = (e) => {
+    setFiles({ ...files, [e.target.name]: e.target.files[0] });
   };
+
   const handleLicenseSelect = (selectedLicense) => {
-    if (draft.licenses.includes(selectedLicense.id)) {
-      const newLicenses = draft.licenses.filter((id) => id !== selectedLicense.id);
-      updateDraftField("licenses", newLicenses);
+    setDraft((prev) => {
+      const isSelected = prev.licenses.includes(selectedLicense.id);
+      const newLicenses = isSelected
+        ? prev.licenses.filter((id) => id !== selectedLicense.id) // Remove
+        : [...prev.licenses, selectedLicense.id]; // Add
+
       const newFiles = licenses.filter((lic) => newLicenses.includes(lic.id)).flatMap((lic) => lic.license_file_types || []);
-      setSelectedLicenseFiles(Array.from(new Set(newFiles)));
-    } else {
-      const newLicenses = [...draft.licenses, selectedLicense.id];
-      updateDraftField("licenses", newLicenses);
-      const combinedFiles = [...selectedLicenseFiles, ...selectedLicense.license_file_types];
-      setSelectedLicenseFiles(Array.from(new Set(combinedFiles)));
+
+      setSelectedLicenseFiles([...new Set(newFiles)]);
+
+      return { ...prev, licenses: newLicenses };
+    });
+  };
+
+  const handleSaveDraft = async () => {
+    try {
+      const draftData = {
+        user: draft.user,
+        title: draft.title,
+        bpm: draft.bpm,
+        key: draft.key,
+        genre: draft.genre,
+        co_artists: draft.co_artists,
+        licenses: draft.licenses,
+      };
+
+      let draftId = currentDraftId; // Store the draft ID in a local variable
+
+      if (draftId) {
+        // If draft exists, update it
+        console.log(`Modifying existing draft ID: ${draftId}`);
+        await editDraft(draftId, draftData);
+        console.log("Draft updated successfully!");
+      } else {
+        // Otherwise, create a new draft
+        console.log("No existing draft found. Creating a new one...");
+        const createdDraft = await createDraft(draftData);
+        console.log("Draft created:", createdDraft);
+        draftId = createdDraft.id; // Assign the new draft ID
+        setCurrentDraftId(draftId);
+      }
+
+      // Step 2: Upload the files (PATCH request)
+      if (draftId) {
+        await uploadFilesToDraft(draftId, files);
+        console.log("Files uploaded successfully!");
+      } else {
+        console.error("Error: No draft ID available for file upload.");
+      }
+    } catch (error) {
+      console.error("Error saving draft:", error);
     }
   };
-  const handleFileUpload = (fileType, event) => {
-    const file = event.target.files[0];
-    if (file) {
-      updateDraftField("tracks", { ...draft.tracks, [fileType]: file });
+
+  const handleUpload = async () => {
+    try {
+      if (!currentDraftId) {
+        console.error("Error: No draft ID found, cannot finalize.");
+        return;
+      }
+
+      console.log(`Finalizing draft ID: ${currentDraftId}`);
+      await finalizeDraft(currentDraftId);
+      console.log("Draft finalized successfully!");
+
+      setStep(6); // Move to success step
+    } catch (error) {
+      console.error("Error finalizing draft:", error);
     }
   };
+
+  const nextStep = () => {
+    setStep((prev) => prev + 1);
+    handleSaveDraft();
+  };
+  const prevStep = () => setStep((prev) => prev - 1);
+
   return (
-    <div className="create-beat-page">
-      <div className="step-1" alt="Informations">
-        <input type="text" name="title" placeholder="Titre" onChange={(e) => updateDraftField("title", e.currentTarget.value)} />
-        <input type="text" name="genre" placeholder="Genres" onChange={(e) => updateDraftField("genre", e.currentTarget.value)} />
-        <input type="number" name="bpm" placeholder="BPM" onChange={(e) => updateDraftField("bpm", e.currentTarget.value)} />
-        <input
-          type="file"
-          name="cover_image"
-          placeholder="Image de couverture"
-          onChange={(e) => updateDraftField("cover_image", e.target.files[0])}
-        />
-        <label htmlFor="key">Key:</label>
-        <select name="key" id="key" value={draft.key} onChange={(e) => updateDraftField("key", e.target.value)}>
-          <option value="">Select key</option>
-          {musicalKeys.map((keyOption) => (
-            <option key={keyOption} value={keyOption}>
-              {keyOption}
-            </option>
-          ))}
-        </select>
-        <div>
-          <button onClick={() => setShowDropDown(!showDropDown)}>Ajouter un collaborateur</button>
-          <CollaborationDropDown isActive={showDropDown} onUserSelect={handleUserSelect} />
+    <div>
+      {/* STEP 1 */}
+      {step === 1 && (
+        <div className="step-1">
+          <h2>Step 1 - Beat Information</h2>
+          <input type="text" name="title" placeholder="Title" value={draft.title} onChange={handleDraftChange} />
+          <input type="number" name="bpm" placeholder="BPM" value={draft.bpm} onChange={handleDraftChange} />
+          <input type="text" name="key" placeholder="Key" value={draft.key} onChange={handleDraftChange} />
+          <input type="text" name="genre" placeholder="Genre" value={draft.genre} onChange={handleDraftChange} />
+          <input type="file" name="cover_image" onChange={handleFileChange} />
+          <CollaborationDropDown
+            isActive={true}
+            onUserSelect={(user) => {
+              setDraft((prev) => ({
+                ...prev,
+                co_artists: prev.co_artists.includes(user.id) ? prev.co_artists.filter((id) => id !== user.id) : [...prev.co_artists, user.id],
+              }));
+            }}
+            selectedUserIds={draft.co_artists}
+          />
+          <button onClick={nextStep}>Next</button>
         </div>
-      </div>
-      <div className="step-2" alt="Licences">
-        {licenses.length > 0 ? (
-          licenses.map((license) => (
-            <LicenseCard
-              key={license.id}
-              license={license}
-              title={license.title || "No Title"}
-              description={license.description || "No description available"}
-              price={license.price || "0.00"}
-              files={license.license_file_types || []}
-              conditions={license.conditions || []}
-              onUserSelect={() => handleLicenseSelect(license)}
-              active={draft.licenses.includes(license.id)}
-            />
-          ))
-        ) : (
-          <p>Aucune licence trouvée.</p>
-        )}
-        <button onClick={() => navigate("/dashboard/licences")}>Crée une licence</button>
-      </div>
-      <div className="step-3" alt="Fichiers">
-        <h2>Upload Required Files</h2>
-        {selectedLicenseFiles && selectedLicenseFiles.length > 0 ? (
-          selectedLicenseFiles.map((fileType) => (
-            <div key={fileType}>
-              <label>{fileType.toUpperCase()} File:</label>
-              <input type="file" accept={`.${fileType}`} onChange={(e) => handleFileUpload(fileType, e)} />
-            </div>
-          ))
-        ) : (
-          <p>Aucun fichier requis basé sur les licences sélectionnées.</p>
-        )}
-      </div>
-      <div className="step-4" alt="Récapitulatif">
-        <h2>Récapitulatif</h2>
-        <div>
+      )}
+
+      {/* STEP 2 */}
+      {step === 2 && (
+        <div className="step-2">
+          <h2>Step 2 - Select Licenses</h2>
+          {licenses.length > 0 ? (
+            licenses.map((license) => (
+              <LicenseCard
+                key={license.id}
+                license={license}
+                title={license.title || "No Title"}
+                description={license.description || "No description available"}
+                price={license.price || "0.00"}
+                files={license.license_file_types || []}
+                conditions={license.conditions || []}
+                onUserSelect={() => handleLicenseSelect(license)}
+                active={draft.licenses.includes(license.id)}
+              />
+            ))
+          ) : (
+            <p>No licenses found.</p>
+          )}
+          <button onClick={prevStep}>Back</button>
+          <button onClick={nextStep}>Next</button>
+        </div>
+      )}
+
+      {/* STEP 3 */}
+      {step === 3 && (
+        <div className="step-3">
+          <h2>Step 3 - Upload Required Files</h2>
+          {selectedLicenseFiles.length > 0 ? (
+            selectedLicenseFiles.map((fileType) => (
+              <div key={fileType}>
+                <label>{fileType.toUpperCase()} File:</label>
+                <input type="file" name={fileType} accept={`.${fileType}`} onChange={handleFileChange} />
+              </div>
+            ))
+          ) : (
+            <p>No files required based on selected licenses.</p>
+          )}
+          <button onClick={prevStep}>Back</button>
+          <button onClick={nextStep}>Next</button>
+        </div>
+      )}
+
+      {/* STEP 4 - Recap */}
+      {step === 4 && (
+        <div className="step-4">
+          <h2>Step 4 - Recap</h2>
           <p>
-            <strong>Titre:</strong> {draft.title}
+            <strong>Title:</strong> {draft.title}
           </p>
           <p>
             <strong>Genre:</strong> {draft.genre}
@@ -163,46 +224,35 @@ export default function DashBoardCreateBeats() {
             <strong>Key:</strong> {draft.key}
           </p>
           <p>
-            <strong>Collaborateurs (IDs):</strong> {draft.co_artists.length > 0 ? draft.co_artists.join(", ") : "Aucun"}
+            <strong>Co-Artists (IDs):</strong> {draft.co_artists.length > 0 ? draft.co_artists.join(", ") : "None"}
           </p>
           <p>
-            <strong>Licences:</strong>{" "}
-            {draft.licenses.length > 0
-              ? draft.licenses
-                  .map((licId) => {
-                    const lic = licenses.find((l) => l.id === licId);
-                    return lic ? `${lic.title} ${lic.artist_name || lic.price || "free"}€` : licId;
-                  })
-                  .join(" | ")
-              : "Aucune"}
+            <strong>Licenses:</strong> {draft.licenses.length > 0 ? draft.licenses.join(", ") : "None"}
           </p>
-          <p>
-            <strong>Fichiers Uploadés:</strong>{" "}
-            {draft.tracks && Object.keys(draft.tracks).length > 0
-              ? Object.entries(draft.tracks)
-                  .map(([fileType, file]) => `${fileType.toUpperCase()}: ${file.name}`)
-                  .join(" | ")
-              : "Aucun"}
-          </p>
-          {draft.cover_image && (
-            <div>
-              <strong>Image de couverture:</strong>
-              <br />
-              <img src={coverPreview} alt="Cover Preview" style={{ width: "200px" }} />
-            </div>
-          )}
+          <button onClick={prevStep}>Back</button>
+          <button onClick={nextStep}>Next</button>
         </div>
-      </div>
+      )}
 
-      <div className="step-5" alt="Upload">
-        <button>Upload</button>
-      </div>
-      <div className="step-6" alt="Succes"></div>
+      {/* STEP 5 - Upload */}
+      {step === 5 && (
+        <div className="step-5">
+          <h2>Step 5 - Upload</h2>
+          <button onClick={prevStep}>Back</button>
+          <button onClick={handleUpload}>Upload</button>
+        </div>
+      )}
+
+      {/* STEP 6 - Success */}
+      {step === 6 && (
+        <div className="step-6">
+          <h2>Step 6 - Success!</h2>
+        </div>
+      )}
+
       <pre>{JSON.stringify({ draft }, null, 2)}</pre>
-      <pre>{JSON.stringify({ selectedLicenseFiles }, null, 2)}</pre>
-      <button onClick={() => setSerializedData(serializeBeatData(draft))}>serialize data</button>
-      <pre>{JSON.stringify({ serializedData }, null, 2)}</pre>
-      {coverPreview && <img src={coverPreview} alt="Cover Preview" style={{ width: "200px" }} />}
+      <pre>{JSON.stringify({ files }, null, 2)}</pre>
+      {currentDraftId}
     </div>
   );
 }
