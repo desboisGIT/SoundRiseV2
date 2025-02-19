@@ -463,3 +463,16 @@ class CollaborationInvite(models.Model):
     def refuse(self):
         self.status = 'refused'
         self.save()
+
+class Bundle(models.Model):
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    beats = models.ManyToManyField(Beat, related_name="bundles")
+    user = models.ForeignKey("core.CustomUser", on_delete=models.CASCADE, related_name="bundles")
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    # Licence globale
+    license_type = models.ForeignKey(License, on_delete=models.CASCADE, null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+

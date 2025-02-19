@@ -140,6 +140,8 @@ class Notifications(models.Model):
     message = models.TextField()
     is_read = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
+    type = models.CharField(max_length=100)  # Raison du signalement
+
 
     def __str__(self):
         return f"Notification pour {self.user.username} : {self.message}"
