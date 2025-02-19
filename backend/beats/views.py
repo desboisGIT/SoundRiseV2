@@ -278,6 +278,13 @@ class DraftBeatListCreateView(generics.ListCreateAPIView):
         data = request.data.copy()
         data['user'] = request.user.id  # Assigner l'utilisateur automatiquement
 
+        co_artists_ids = data.get('co_artists', [])
+        # Supprimer l'utilisateur de la liste des co-artistes s'il s'y trouve
+        if request.user.id in co_artists_ids:
+            co_artists_ids.remove(request.user.id)
+
+        data['co_artists'] = co_artists_ids  # Mettre à jour la liste des co-artistes
+
         # Utiliser le sérialiseur pour valider et enregistrer
         serializer = self.get_serializer(data=data)
         if serializer.is_valid():
@@ -298,6 +305,10 @@ class DraftBeatListCreateView(generics.ListCreateAPIView):
             genre = request.data.get('genre', draft_beat.genre)
             cover_image = request.data.get('cover_image', draft_beat.cover_image)
             co_artists_ids = request.data.get('co_artists', [])
+            
+            if request.user.id in co_artists_ids:
+                co_artists_ids.remove(request.user.id)
+
 
             # Récupérer les IDs des licenses 
             license_ids = request.data.get('license_ids', [])
