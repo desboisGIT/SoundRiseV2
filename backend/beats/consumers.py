@@ -129,15 +129,16 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
                 "invite_id": i.id, 
                 "recipient": i.recipient.username,  
                 "status": i.status
+                
             } 
             for i in invites
         ]
 
     @database_sync_to_async
-    def create_notification(self, user, message,type):
+    def create_notification(self, user, message,notif_type):
         """ Crée une notification pour l'utilisateur """
         from core.models import Notifications
-        return Notifications.objects.create(user=user, message=message,type=type)
+        return Notifications.objects.create(user=user, message=message,notif_type=notif_type)
     
     @database_sync_to_async
     def get_unread_notifications(self, user):
@@ -145,9 +146,11 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
         from core.models import Notifications
         return [
             {
+                "notif_type": n.notif_type,
                 "id": n.id,
                 "message": n.message,
                 "timestamp": n.timestamp.isoformat() if n.timestamp else None  # Convertit datetime → string
+                
             }
             for n in Notifications.objects.filter(user=user, is_read=False)
         ]
@@ -279,7 +282,7 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
                 "type": "collab_invite_refused",
                 "notif_type":"invite_refused",
                 "message": "Invitation refusée",
-            },
+            },  
         )
 
         await self.create_notification(

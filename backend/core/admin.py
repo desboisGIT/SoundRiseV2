@@ -50,8 +50,8 @@ class ReportAdmin(admin.ModelAdmin):
 
 @admin.register(Notifications)
 class NotificationsAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "sender", "message", "is_read", "timestamp", "type")
-    list_filter = ("is_read", "timestamp", "type")
+    list_display = ("id", "user", "sender", "message", "is_read", "timestamp", "notif_type")
+    list_filter = ("is_read", "timestamp", "notif_type")
     search_fields = ("user__username", "sender__username", "message")
     ordering = ("-timestamp",)
     autocomplete_fields = ("user", "sender")
