@@ -3,6 +3,8 @@ import { getUserInfo } from "../api/user";
 import { logout } from "../api/auth";
 import { useNavigate } from "react-router-dom";
 import { useWebSocket } from "../components/context/WebSocketContext";
+import Notification from "../components/notifications/Notification";
+import NotificationList from "../components/notifications/NotificationList";
 
 export default function DebugPage() {
   const [userInfo, setUserInfo] = useState(null);
@@ -14,6 +16,7 @@ export default function DebugPage() {
   const [draftbeatId, setDraftbeatId] = useState("");
   const [inviteId, setInviteId] = useState("");
   const [messages, setMessages] = useState([]);
+  const [notifications, setNotifications] = useState([]); // 🔹 NEW: Separate state for notifications
 
   useEffect(() => {
     getUserInfo()
@@ -39,7 +42,21 @@ export default function DebugPage() {
     if (!wsService) return;
 
     const handleWebSocketMessage = (message) => {
+      console.log("📩 WebSocket received message:", message);
       setMessages((prev) => [...prev, message]);
+
+      // 🔹 If the message is an invitation notification, update the notifications list
+      if (message.type === "invitation_notification") {
+        setNotifications((prev) => [
+          {
+            notif_type: message.notif_type,
+            id: message.invite_id,
+            message: `${message.sender} vous a invité à collaborer sur '${message.draftbeat_title}'.`,
+            timestamp: new Date().toISOString(),
+          },
+          ...prev, // Keep existing notifications
+        ]);
+      }
     };
 
     wsService.addListener(handleWebSocketMessage);
@@ -126,12 +143,41 @@ export default function DebugPage() {
       <button onClick={declineInvite}>Decline Invite</button>
 
       <h2>📡 WebSocket Messages</h2>
-      <div style={{ border: "1px solid #ccc", padding: "10px", maxHeight: "200px", overflowY: "auto" }}>
+      <div>
         {messages.length === 0 ? (
           <p>No messages received yet.</p>
         ) : (
-          messages.map((msg, index) => <pre key={index}>{JSON.stringify(msg, null, 2)}</pre>)
+          messages
+            .filter((msg) => msg.type === "unread_notifications") // Get only unread notifications
+            .flatMap((msg) => msg.notifications) // Extract notifications list
+            .map((notif, index) => (
+              <Notification
+                key={index} // ✅ Auto-incremented key
+                message={notif.message}
+                id={notif.id}
+                type={notif.notif_type}
+                timestamp={new Date(notif.timestamp).toLocaleString()}
+              />
+            ))
         )}
+      </div>
+
+      <h2>🔔 Live Notifications</h2>
+      <div>
+        {notifications.length === 0 ? (
+          <p>No new notifications.</p>
+        ) : (
+          notifications.map((notif, index) => (
+            <Notification
+              key={notif.id || index} // Use id if available, else index
+              message={notif.message}
+              id={notif.id}
+              type={notif.notif_type}
+              timestamp={new Date(notif.timestamp).toLocaleString()}
+            />
+          ))
+        )}
+        <NotificationList />
       </div>
     </div>
   );
