@@ -24,7 +24,7 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
             unread_notifications = await self.get_unread_notifications(self.user)
             await self.send(json.dumps(
                 {"type": "unread_notifications","notif_type":"unread_notifications", "notifications": unread_notifications}, 
-                ensure_ascii=False  # Empêche l'encodage en Unicode
+                ensure_ascii=True  # Empêche l'encodage en Unicode ???? security flaw bro
             ))
         else:
             await self.close()
@@ -135,26 +135,34 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
         ]
 
     @database_sync_to_async
-    def create_notification(self, user, message,notif_type):
-        """ Crée une notification pour l'utilisateur """
+    def create_notification(self, user, message, notif_type, sender=None, draft_beat_title=None):
         from core.models import Notifications
-        return Notifications.objects.create(user=user, message=message,notif_type=notif_type)
-    
+        return Notifications.objects.create(
+            user=user,
+            sender=sender,
+            message=message,
+            notif_type=notif_type,
+            draft_beat_title=draft_beat_title,
+        )
+
     @database_sync_to_async
     def get_unread_notifications(self, user):
-        """ Récupère les notifications non lues et convertit timestamp en string """
         from core.models import Notifications
+        notifications = Notifications.objects.filter(user=user, is_read=False).select_related('sender')
+        for n in notifications:
+            print("DEBUG Notification:", n)
         return [
             {
                 "notif_type": n.notif_type,
                 "id": n.id,
                 "message": n.message,
-                "timestamp": n.timestamp.isoformat() if n.timestamp else None  # Convertit datetime → string
-                
+                "timestamp": n.timestamp.isoformat() if n.timestamp else None,
+                "sender_id": n.sender.id if n.sender else None,
+                "sender_username": n.sender.username if n.sender else None,
+                "draft_beat_title": n.draft_beat_title
             }
-            for n in Notifications.objects.filter(user=user, is_read=False)
+            for n in notifications
         ]
-
 
 
     @database_sync_to_async
@@ -172,39 +180,47 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
         draftbeat = await self.get_draftbeat(draftbeat_id)
 
         if not recipient:
-            return await self.send(json.dumps({"error": "Utilisateur introuvable"},ensure_ascii=False))
+            return await self.send(json.dumps({"error": "Utilisateur introuvable"}, ensure_ascii=False))
 
         if not draftbeat:
-            return await self.send(json.dumps({"error": "DraftBeat introuvable"},ensure_ascii=False))
+            return await self.send(json.dumps({"error": "DraftBeat introuvable"}, ensure_ascii=False))
 
         if draftbeat.user_id != self.user.id:
-            return await self.send(json.dumps({"error": "Vous n'êtes pas le propriétaire de ce DraftBeat"},ensure_ascii=False))
+            return await self.send(json.dumps({"error": "Vous n'êtes pas le propriétaire de ce DraftBeat"}, ensure_ascii=False))
 
         if recipient.id == self.user.id:
-            return await self.send(json.dumps({"error": "Vous ne pouvez pas vous inviter vous-même"},ensure_ascii=False))
+            return await self.send(json.dumps({"error": "Vous ne pouvez pas vous inviter vous-même"}, ensure_ascii=False))
 
         if await self.invite_exists(draftbeat, recipient):
-            return await self.send(json.dumps({"error": "Invitation déjà envoyée"},ensure_ascii=False))
+            return await self.send(json.dumps({"error": "Invitation déjà envoyée"}, ensure_ascii=False))
 
+        # Create the invite with self.user as sender
         invite = await self.create_invite(self.user, recipient, draftbeat)
 
+        # Notify the recipient (sender is still passed as username for display)
         await self.channel_layer.group_send(
             f"user_{recipient.id}",
             {
                 "type": "invitation_notification",
-                "notif_type":"invitation_collab",
+                "notif_type": "invitation_collab",
                 "invite_id": invite.id,
                 "draftbeat_title": draftbeat.title,
-                "sender": self.user.username,
+                "sender_id": invite.sender.id,
+                "sender_username": invite.sender.username,
             },
         )
+
+        # Explicitly fetch the sender instance from the database
+        sender_instance = await self.get_user(self.user.id)
         await self.create_notification(
-            recipient, 
+            recipient,
             f"{self.user.username} vous a invité à collaborer sur '{draftbeat.title}'.",
-            "invitation_collab"
+            "invitation_collab",
+            draft_beat_title=draftbeat.title,
+            sender=sender_instance  # Pass the full user instance, not just username
         )
 
-        await self.send(json.dumps({"success": "Invitation envoyée"},ensure_ascii=False))
+        await self.send(json.dumps({"success": "Invitation envoyée"}, ensure_ascii=False))
         
     from asgiref.sync import sync_to_async
 

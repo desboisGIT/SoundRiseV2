@@ -141,7 +141,7 @@ class Notifications(models.Model):
     is_read = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
     notif_type = models.CharField(max_length=100)  # Raison du signalement
-
+    draft_beat_title = models.CharField(max_length=1000, default='Null')
 
     def __str__(self):
         return f"Notification pour {self.user.username} : {self.message}"
