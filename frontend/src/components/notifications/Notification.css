@@ -1,0 +1,86 @@
+.notification-card {
+  display: flex;
+  padding: 6px 15px 2px 15px;
+}
+.sender-profile-picture {
+  object-fit: cover;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+}
+.sender-username-placeholder {
+  min-width: 30px;
+  min-height: 30px;
+  border-radius: 50%;
+  background-color: rgb(110, 110, 110);
+}
+
+.sender-username {
+  color: rgb(15, 118, 252);
+  cursor: pointer;
+}
+
+.sender-username:hover {
+  text-decoration: underline;
+}
+
+.notification-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.invitation-header p {
+  margin: 0;
+}
+
+.notification-timestamp {
+  text-align: end;
+  color: rgb(107, 107, 107);
+
+  font-size: small;
+}
+
+.invitation_collab-actions {
+  color: rgb(124, 124, 124);
+}
+
+.invitation_collab-actions-more {
+  margin-left: 5px;
+}
+
+.notification-end {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  margin-top: 5px;
+}
+
+.notification-end span {
+  color: rgb(194, 194, 194);
+  font-size: 15px;
+}
+
+.notification-end-margin {
+  margin-left: 43px;
+}
+
+.notificaction-list-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px;
+}
+.notificaction-list-header h2 {
+  margin: 0px;
+}
+.new-notification-mark {
+  display: inline-block;
+  margin-right: 10px;
+  margin-bottom: 2px;
+  background-color: rgb(202, 32, 32);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}

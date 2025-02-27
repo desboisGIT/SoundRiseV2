@@ -1,0 +1,46 @@
+.notification-bell {
+  position: relative;
+  cursor: pointer;
+  color: #9f9f9f;
+  display: flex;
+  gap: 8px;
+  border-radius: 50px;
+  padding: 7px 12px;
+
+  border: 1px solid rgba(38, 38, 38, 0);
+  -moz-transition: all 0.2s ease-in;
+  -webkit-transition: all 0.2s ease-in;
+  -o-transition: all 0.2s ease-in;
+  transition: all 0.2s ease-in;
+}
+
+.notification-bell:hover {
+  background-color: #1d1d1ddc;
+  border: 1px solid rgb(59, 59, 59);
+  color: #dfdfdf !important;
+}
+
+@media (max-width: 600px) {
+  .notification-bell {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+.drop-down-arrow {
+  color: #9f9f9f;
+  transition: all 0.2s ease-in;
+  width: 10px;
+}
+
+.arrow-rotate-0 {
+  rotate: 0deg;
+}
+.arrow-rotate-90 {
+  rotate: -15deg;
+}
+.arrow-rotate-180 {
+  rotate: -180deg;
+}

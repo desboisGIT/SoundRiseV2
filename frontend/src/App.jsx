@@ -30,6 +30,7 @@ import DashBoardSupport from "./pages/dashboard/utils/DashBoardSupport";
 import DashBoardMessages from "./pages/dashboard/accounts/DashBoardMessages";
 import DashBoardCreateBeats from "./pages/dashboard/beats/DashBoardCreateBeats";
 import DebugPage from "./pages/DebugPage";
+import NotificationBell from "./components/notifications/NotificationBell";
 
 const clientId = "162639459241-vfs3ogmpn0fb9jhva7fhfc18k1qlqqm0.apps.googleusercontent.com";
 
@@ -86,6 +87,7 @@ const AppContent = () => {
           <>
             {loggedIn ? (
               <>
+                <NotificationBell />
                 <TopBarButtonDropDown title="Accounts" optionList={accountsOptions} position="center" />
                 <TopBarButton title="Refresh Token" action={() => userApi.refreshAccessToken()} />
               </>

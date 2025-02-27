@@ -111,6 +111,26 @@ export const getLicenseList = async () => {
   }
 };
 
+export const fetchUserById = async (userId, fields = ["profile_picture", "username", "id"]) => {
+  const params = new URLSearchParams();
+  params.append("fields", fields.join(","));
+  params.append("id", userId); // use id as a filter
+
+  const url = `http://127.0.0.1:8000/api/users/filter/?${params.toString()}`;
+
+  try {
+    const response = await makeAuthenticatedRequest(() => axios.get(url));
+    // Assuming the API returns an object with a "users" array:
+    if (response.data && response.data.users && response.data.users.length > 0) {
+      return response.data.users[0]; // Return the first (and only) user
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching user by id:", error);
+    throw error;
+  }
+};
+
 export default {
   makeAuthenticatedRequest,
   fetchFilteredUsers,
@@ -118,4 +138,5 @@ export default {
   getUserInfo,
   isLoggedIn,
   getLicenseList,
+  fetchUserById,
 };

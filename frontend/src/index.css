@@ -67,7 +67,7 @@ body {
   caret-color: rgb(164, 29, 182);
   color: #e0e0e0;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Added subtle shadow */
-  z-index: 1000;
+  z-index: 20;
 }
 
 .form-span {
@@ -115,6 +115,13 @@ input:-webkit-autofill {
 }
 .space {
   justify-content: space-between;
+}
+.spacer-80 {
+  width: 80%;
+  height: 1px;
+  background-color: rgb(44, 44, 44);
+  margin-top: 7px;
+  margin-bottom: 7px;
 }
 .gap-10 {
   gap: 10px;
@@ -166,4 +173,11 @@ pre {
   background-color: rgb(44, 44, 44);
   margin-top: 7px;
   margin-bottom: 7px;
+}
+
+.text-hover {
+  cursor: pointer;
+}
+.text-hover:hover {
+  text-decoration: underline;
 }
