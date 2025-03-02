@@ -1,13 +1,14 @@
 
-from django.contrib.auth.models import AbstractUser, BaseUserManager
-from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
-from django.core.validators import MinLengthValidator, RegexValidator, EmailValidator
+from django.core.validators import MinLengthValidator, RegexValidator, EmailValidator,URLValidator
 from django.utils.translation import gettext_lazy as _
 import urllib.parse
 
-from django.conf import settings
+from core.validators import (validate_instagram, validate_twitter, validate_youtube, 
+                             validate_tiktok, validate_soundcloud, validate_spotify, 
+                             validate_apple_music, validate_website)
+
 
 class CustomUserManager(BaseUserManager):
     """Gestionnaire de création des utilisateurs et superutilisateurs"""
@@ -34,6 +35,9 @@ class CustomUserManager(BaseUserManager):
             raise ValueError(_("Un superutilisateur doit avoir is_superuser=True."))
         
         return self.create_user(email, username, password, **extra_fields)
+
+
+
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
@@ -70,11 +74,26 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     date_joined = models.DateTimeField(auto_now_add=True)
     
     
+    
+    # Champs pour les réseaux sociaux avec validation spécifique
+    instagram = models.URLField(blank=True, null=True, validators=[validate_instagram])
+    twitter = models.URLField(blank=True, null=True, validators=[validate_twitter])
+    youtube = models.URLField(blank=True, null=True, validators=[validate_youtube])
+    tiktok = models.URLField(blank=True, null=True, validators=[validate_tiktok])
+    soundcloud = models.URLField(blank=True, null=True, validators=[validate_soundcloud])
+    spotify = models.URLField(blank=True, null=True, validators=[validate_spotify])
+    apple_music = models.URLField(blank=True, null=True, validators=[validate_apple_music])
+    website = models.URLField(blank=True, null=True, validators=[validate_website])
+
     profile_picture = models.ImageField(upload_to="profile_pics/", null=True, blank=True, default="profile_pics/default_profile.png")
 
     bio = models.TextField(blank=True, null=True)
     following = models.ManyToManyField("self", symmetrical=False, related_name="followers", blank=True)
     
+    trending_beats = models.JSONField(default=list, blank=True)
+    recent_publications = models.JSONField(default=list, blank=True)
+    
+    badges = models.JSONField(default=list, blank=True)
 
     objects = CustomUserManager()
 
