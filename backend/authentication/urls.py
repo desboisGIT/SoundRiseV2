@@ -1,5 +1,5 @@
 from django.urls import path,include
-from .views import RegisterView,LogoutView,VerifyEmailView,CustomTokenObtainPairView, GoogleLoginView, CustomTokenRefreshView
+from .views import RegisterView,LogoutView,VerifyEmailView,CustomTokenObtainPairView, GoogleLoginView, CustomTokenRefreshView,RequestPasswordResetView,PasswordResetConfirmView
 from rest_framework_simplejwt.views import  TokenRefreshView
 from . import views
 from . import testing_views
@@ -17,6 +17,11 @@ urlpatterns = [
     path('social/', include('allauth.socialaccount.urls')),
     path('google/login/', GoogleLoginView.as_view(), name='google_login'),
     path('google/callback/', views.google_callback, name='google_callback'),  # Callback
+    
+
+    path('password-reset/', RequestPasswordResetView.as_view(), name='password_reset'),
+    path('password-reset-confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+
 
     # Tests:
     path('test/echo-cookies/', testing_views.EchoCookiesView.as_view(), name='echo-cookies')

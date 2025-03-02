@@ -29,6 +29,13 @@ from django.http import JsonResponse
 import requests
 import json
 
+
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.urls import reverse
+
 class RegisterView(CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
@@ -277,3 +284,64 @@ class GoogleLoginView(SocialLoginView):
     """
     adapter_class = GoogleOAuth2Adapter
 
+
+
+
+class RequestPasswordResetView(APIView):
+    """
+    Vue API pour demander une réinitialisation de mot de passe.
+    L'utilisateur entre son email et reçoit un lien contenant un token.
+    """
+    def post(self, request):
+        email = request.data.get("email")
+        if not email:
+            return Response({"error": "L'email est requis."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "Aucun compte associé à cet email."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Générer le token de réinitialisation
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        reset_url = request.build_absolute_uri(reverse('authentication:password_reset_confirm')) + f"?uidb64={uidb64}&token={token}"
+
+        # Envoyer l'email
+        send_mail(
+            "Réinitialisation de votre mot de passe",
+            f"Utilisez ce lien pour réinitialiser votre mot de passe : {reset_url}",
+            "no-reply@soundrise.com",
+            [email],
+            fail_silently=False,
+        )
+
+        return Response({"message": "Un e-mail de réinitialisation a été envoyé."}, status=status.HTTP_200_OK)
+
+
+
+class PasswordResetConfirmView(APIView):
+    """
+    Vue API pour réinitialiser le mot de passe avec un token valide.
+    """
+    def post(self, request):
+        uidb64 = request.data.get("uidb64")
+        token = request.data.get("token")
+        new_password = request.data.get("new_password")
+
+        if not all([uidb64, token, new_password]):
+            return Response({"error": "Tous les champs sont requis."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = CustomUser.objects.get(pk=uid)
+        except (CustomUser.DoesNotExist, ValueError):
+            return Response({"error": "Lien invalide ou expiré."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not default_token_generator.check_token(user, token):
+            return Response({"error": "Token invalide ou expiré."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+
+        return Response({"message": "Mot de passe réinitialisé avec succès."}, status=status.HTTP_200_OK)
