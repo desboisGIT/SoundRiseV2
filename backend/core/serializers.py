@@ -7,7 +7,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ["id", "username", "email", "profile_picture", "bio", "is_online"]
+        fields = ["id", "username", "email", "profile_picture", "bio","badges","trending_beats","recent_publications","instagram","youtube","spotify","twitter","soundcloud","tiktok","apple_music","website", "is_online"]
 
     def get_profile_picture(self, obj):
         request = self.context.get("request")
