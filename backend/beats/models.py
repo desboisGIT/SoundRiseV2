@@ -417,7 +417,7 @@ class DraftBeat(models.Model):
     # ✅ Stockage des Licenses et Tracks sous forme de liste JSON 
     licenses = models.ManyToManyField(License, blank=True)
 
-    #files
+    # Files
     mp3 = models.FileField(upload_to='beats/%Y/%m/%d/', null=True, blank=True)
     wav = models.FileField(upload_to='beats/%Y/%m/%d/', null=True, blank=True)
     flac = models.FileField(upload_to='beats/%Y/%m/%d/', null=True, blank=True)
@@ -430,14 +430,6 @@ class DraftBeat(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-    
-        
-
-
-
-
-
 
 class Hashtag(models.Model):
     name = models.CharField(max_length=50, unique=True)
