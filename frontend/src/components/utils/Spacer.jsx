@@ -21,7 +21,7 @@ const Spacer = ({ size, color, orientation, length, customMargin }) => {
           margin,
         };
 
-  return <div style={style} />;
+  return <div style={style} className="custom-spacer" />;
 };
 
 Spacer.propTypes = {

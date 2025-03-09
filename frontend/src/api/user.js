@@ -78,6 +78,22 @@ export const getUserInfo = async () => {
   }
 };
 
+// Get profile info.
+export const getProfileInfo = async () => {
+  const token = localStorage.getItem("access_token");
+  try {
+    const response = await makeAuthenticatedRequest(() =>
+      axios.get(API_URL, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Not logged in:", error);
+    return null;
+  }
+};
+
 const API_URL_ISLOGGEDIN = "http://127.0.0.1:8000/api/user/?fields=is_online";
 export const isLoggedIn = async () => {
   const token = localStorage.getItem("access_token");

@@ -1,21 +1,21 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.translation import gettext_lazy as _
-from .models import CustomUser,Report, Notifications
+from .models import CustomUser, Report, Notifications
 
 class CustomUserAdmin(UserAdmin):
     """Configuration de l'affichage du modèle CustomUser dans l'admin Django"""
 
     model = CustomUser
 
-    list_display = ("id", "email", "username","profile_picture", "is_staff", "is_active", "date_joined")
+    list_display = ("id", "email", "username", "profile_picture", "is_staff", "is_active", "date_joined")
     list_filter = ("is_staff", "is_active")
     ordering = ("date_joined",)
     search_fields = ("email", "username")
 
     fieldsets = (
-        (_("Informations personnelles"), {"fields": ("email", "username", "password","profile_picture","bio" )}),
-                                                    
+        (_("Informations personnelles"), {"fields": ("email", "username", "password", "profile_picture", "bio")}),
+        (_("Liens sociaux"), {"fields": ("apple_music", "instagram", "soundcloud", "spotify", "tiktok", "twitter", "website", "youtube")}),
         (_("Permissions"), {"fields": ("is_staff", "is_active", "is_superuser", "groups", "user_permissions")}),
     )
 
